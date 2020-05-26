@@ -25,8 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2020051506;
+$plugin->version   = 2020052600;
 $plugin->requires  = 2018050800;
 $plugin->component = 'mod_meet';
 $plugin->cron      = 0;
-$plugin->release   = '0.1.0';
+$plugin->release   = '0.1.1';

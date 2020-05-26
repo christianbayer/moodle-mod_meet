@@ -62,6 +62,8 @@ function meet_supports($feature) {
 function meet_add_instance($data, $mform) {
     global $DB;
 
+    meet_register_watcher();
+
     // Prepare data
     meet_process_pre_save($data);
 
@@ -122,7 +124,7 @@ function meet_delete_instance($id) {
     $gClient = meet_create_google_client($config);
 
     // Get the service
-    $gCalendarService = meet_create_google_service($gClient);
+    $gCalendarService = meet_create_google_calendar_service($gClient);
 
     try {
         // Delete the event in the Google Calendar
@@ -188,12 +190,10 @@ function meet_process_post_save(&$data, &$current = null) {
     $data->gClient = meet_create_google_client($data->config);
 
     // Set the service
-    $data->gCalendarService = meet_create_google_service($data->gClient);
+    $data->gCalendarService = meet_create_google_calendar_service($data->gClient);
 
     // Set the event
     $data->gEvent = $current->geventid ? meet_get_google_calendar_event($data->gCalendarService, $data->config->calendarid, $current->geventid) : null;
-
-    var_dump('<pre>',$data->gEvent,'</pre>');die;
 
     // Set completion date
     meet_update_completion_date($data);
@@ -273,7 +273,7 @@ function meet_process_post_restore($meetid) {
     $data->users = get_enrolled_users($data->context);
     $data->reminders = array_values($DB->get_records('meet_reminders', array('meetid' => $data->id)));
     $data->gClient = meet_create_google_client($data->config);
-    $data->gCalendarService = meet_create_google_service($data->gClient);
+    $data->gCalendarService = meet_create_google_calendar_service($data->gClient);
 
     // Save participants
     meet_save_participants($data);
@@ -638,7 +638,7 @@ function meet_create_google_client($config) {
  * @param $gClient
  * @return Google_Service_Calendar
  */
-function meet_create_google_service($gClient) {
+function meet_create_google_calendar_service($gClient) {
     return new Google_Service_Calendar($gClient);
 }
 
@@ -719,7 +719,7 @@ function meet_update_google_calendar_event_name($meetid) {
 
     $config = get_config('meet');
     $gclient = meet_create_google_client($config);
-    $gservice = meet_create_google_service($gclient);
+    $gservice = meet_create_google_calendar_service($gclient);
 
     // Get event
     $gevent = meet_get_google_calendar_event($gservice, $config->calendarid, $meet->geventid);
@@ -750,7 +750,7 @@ function meet_add_user_to_event($meetorid, $userorid) {
 
     $config = get_config('meet');
     $gclient = meet_create_google_client($config);
-    $gservice = meet_create_google_service($gclient);
+    $gservice = meet_create_google_calendar_service($gclient);
 
     // Get event
     $gevent = meet_get_google_calendar_event($gservice, $config->calendarid, $meetorid->geventid);
@@ -798,7 +798,7 @@ function meet_remove_user_from_event($meetorid, $userorid) {
 
     $config = get_config('meet');
     $gclient = meet_create_google_client($config);
-    $gservice = meet_create_google_service($gclient);
+    $gservice = meet_create_google_calendar_service($gclient);
 
     // Get event
     $gevent = meet_get_google_calendar_event($gservice, $config->calendarid, $meetorid->geventid);
