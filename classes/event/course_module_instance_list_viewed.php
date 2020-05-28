@@ -24,6 +24,7 @@
  */
 
 namespace mod_meet\event;
+
 defined('MOODLE_INTERNAL') || die();
 
 /**

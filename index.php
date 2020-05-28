@@ -24,7 +24,7 @@
  * @author    Christian Bayer  (christian.bayer@universo.univates.br)
  */
 
-require('../../config.php');
+require_once('../../config.php');
 
 // Get course id
 $id = required_param('id', PARAM_INT);

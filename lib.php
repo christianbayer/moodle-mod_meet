@@ -62,8 +62,6 @@ function meet_supports($feature) {
 function meet_add_instance($data, $mform) {
     global $DB;
 
-    meet_register_watcher();
-
     // Prepare data
     meet_process_pre_save($data);
 
@@ -455,8 +453,65 @@ function meet_save_reminders(&$data) {
  * @param $eventid
  * @return Google_Service_Calendar_Event
  */
-function meet_get_google_calendar_event($service, $calendarid, $eventid) {
+function meet_get_google_calendar_event(Google_Service_Calendar $service, $calendarid, $eventid) {
     return $service->events->get($calendarid, $eventid);
+}
+
+/**
+ * Get the Google Drive File
+ *
+ * @param $data
+ * @param $eventid
+ * @return Google_Service_Drive_DriveFile
+ */
+function meet_get_google_drive_file(Google_Service_Drive $service, $fileid) {
+    $optparams = array(
+        'fields' => 'id,name,videoMediaMetadata/durationMillis,thumbnailLink,createdTime,modifiedTime'
+    );
+
+    return $service->files->get($fileid, $optparams);
+}
+
+/**
+ * Set the Google Drive File permission to public access. This removes any shared user other then the owner.
+ * @param Google_Service_Drive $service
+ * @param                      $fileid
+ * @return bool
+ */
+function meet_set_google_drive_file_permission(Google_Service_Drive $service, $fileid) {
+    // Disable notification
+    $optparams = array(
+        'sendNotificationEmail' => false,
+    );
+
+    // Define permission
+    $permission = new Google_Service_Drive_Permission();
+    $permission->setType('anyone');
+    $permission->setRole('reader');
+
+    // Save the permission
+    $service->permissions->create($fileid, $permission, $optparams);
+
+    return true;
+}
+
+/**
+ * @param Google_Service_Drive $service
+ * @param                      $fileid
+ * @return bool
+ */
+function meet_remove_google_drive_file_permissions(Google_Service_Drive $service, $fileid) {
+    // Get current permissions
+    $permissions = $service->permissions->listPermissions($fileid);
+
+    // Remove any sharing that is with the owner or the "anyone" type
+    foreach ($permissions->getPermissions() as $permission) {
+        if($permission->getRole() != 'owner') {
+            $service->permissions->delete($fileid, $permission->getId());
+        }
+    }
+
+    return true;
 }
 
 /**
@@ -626,6 +681,10 @@ function meet_create_google_client($config) {
     $gClient->setScopes([
         Google_Service_Calendar::CALENDAR,
         Google_Service_Calendar::CALENDAR_EVENTS,
+        Google_Service_Drive::DRIVE,
+        Google_Service_Drive::DRIVE_FILE,
+        Google_Service_Drive::DRIVE_APPDATA,
+        Google_Service_Drive::DRIVE_METADATA,
     ]);
     $gClient->setSubject($config->calendarowner);
 
@@ -640,6 +699,16 @@ function meet_create_google_client($config) {
  */
 function meet_create_google_calendar_service($gClient) {
     return new Google_Service_Calendar($gClient);
+}
+
+/**
+ * Create a GoogleServiceDrive
+ *
+ * @param $gClient
+ * @return Google_Service_Drive
+ */
+function meet_create_google_calendar_drive($gClient) {
+    return new Google_Service_Drive($gClient);
 }
 
 /**
@@ -825,27 +894,34 @@ function meet_remove_user_from_event($meetorid, $userorid) {
  * Mark the activity completed (if required) and trigger the course_module_viewed event.
  *
  * @param $meet
+ * @param $recording
+ * @param $join
  * @param $course
  * @param $cm
  * @param $context
  */
-function meet_view($meet, $course, $cm, $context) {
+function meet_view($meet, $recording, $join, $course, $cm, $context) {
 
-    // Trigger course_module_viewed event
-    $params = array(
-        'context'  => $context,
-        'objectid' => $meet->id,
-    );
+    if($join) {
+        \mod_meet\event\meeting_joined::create_from_recording($meet, $context)->trigger();
 
-    $event = \mod_meet\event\course_module_viewed::create($params);
-    $event->add_record_snapshot('course_modules', $cm);
-    $event->add_record_snapshot('course', $course);
-    $event->add_record_snapshot('meet', $meet);
-    $event->trigger();
+        // Completion
+        $completion = new completion_info($course);
+        $completion->set_module_viewed($cm);
 
-    // Completion
-    $completion = new completion_info($course);
-    $completion->set_module_viewed($cm);
+        return;
+    }
+
+    if($recording){
+        \mod_meet\event\recording_played::create_from_recording($meet, $recording, $context)->trigger();
+
+        // Completion
+        $completion = new completion_info($course);
+        $completion->set_module_viewed($cm);
+        return;
+    }
+
+    \mod_meet\event\course_module_viewed::create_from_meet($meet, $context)->trigger();
 }
 
 /**
@@ -944,9 +1020,10 @@ function meet_prepare_update_events($meet, $cm = null) {
  */
 function mod_meet_core_calendar_provide_event_action(calendar_event $event,
                                                      \core_calendar\action_factory $factory,
-                                                     int $userid = 0) {
+                                                     $userid = 0) {
     global $DB, $USER;
 
+    // Ensure userid
     if( ! $userid) {
         $userid = $USER->id;
     }
@@ -956,6 +1033,12 @@ function mod_meet_core_calendar_provide_event_action(calendar_event $event,
 
     // If the module is not visible to the user for any reason
     if( ! $cm->uservisible) {
+        return null;
+    }
+
+    // Check capability to join
+    $context = context_module::instance($cm->id);
+    if( ! has_capability('mod/meet:join', $context, $userid)) {
         return null;
     }
 
@@ -977,7 +1060,12 @@ function mod_meet_core_calendar_provide_event_action(calendar_event $event,
         return null;
     }
 
-    return $factory->create_instance(get_string('join', 'meet'), new \moodle_url('/mod/meet/view.php', ['id' => $cm->id]), 1, $roomavailable);
+    return $factory->create_instance(
+        get_string('join', 'meet'),
+        new \moodle_url('/mod/meet/view.php', array('id' => $cm->id)),
+        1,
+        $roomavailable
+    );
 }
 
 /**
@@ -1004,4 +1092,113 @@ function meet_is_meeting_room_available($meet) {
 
     // Has passed
     return null;
+}
+
+/**
+ * Get the recordings of a meet. Get the file from Drive and change its sharing to anyone.
+ *
+ * @param      $meet
+ * @param bool $forceupdate
+ * @return array
+ */
+function meet_get_recordings($meet, $context, $forceupdate = false) {
+    global $DB;
+
+    $config = get_config('meet');
+    $now = time();
+
+    // Is time to fetch the recordings
+    if(($now - $meet->timeend < $config->recordingsfetch && $now - $config->recordingscache > $meet->recordingslastcheck) || $forceupdate) {
+
+        // Start transaction
+        $transaction = $DB->start_delegated_transaction();
+
+        // Get event attachments
+        $gclient = meet_create_google_client($config);
+        $gcalendarservice = meet_create_google_calendar_service($gclient);
+        $gdriveservice = meet_create_google_calendar_drive($gclient);
+        $gevent = meet_get_google_calendar_event($gcalendarservice, $config->calendarid, $meet->geventid);
+        $gattachments = $gevent->getAttachments();
+
+        if(count($gattachments)) {
+
+            // Get current recordings
+            $currentrecordings = array_values($DB->get_records('meet_recordings', array('meetid' => $meet->id)));
+
+            // Run throug the calendar attachments
+            foreach ($gattachments as $attachment) {
+
+                // Check if is a video
+                if($attachment->getMimeType() !== 'video/mp4') {
+                    continue;
+                }
+
+                // Check if the record already exists
+                if(($key = array_search($attachment->getFileId(), array_column($currentrecordings, 'gfileid'))) !== false) {
+                    $recording = $currentrecordings[$key];
+
+                    // The recording is "deleted", don't update it
+                    if($recording->deleted) {
+                        continue;
+                    }
+
+                } else {
+
+                    // Create a new object
+                    $recording = new stdClass();
+                    $recording->courseid = $meet->course;
+                    $recording->meetid = $meet->id;
+                }
+
+                // Get the file
+                $file = meet_get_google_drive_file($gdriveservice, $attachment->getFileId());
+
+                // Get thubm as base64
+                $thumb = base64_encode(file_get_contents($file->getThumbnailLink()));
+
+                // Update obj
+                $recording->gfileid = $file->getId();
+                $recording->gfilename = $file->getName();
+                $recording->gfileduration = $file->getVideoMediaMetadata()->getDurationMillis();
+                $recording->gfiletimecreated = (new DateTime($file->getCreatedTime()))->getTimestamp();
+                $recording->gfiletimemodified = (new DateTime($file->getModifiedTime()))->getTimestamp();
+                $recording->gfilethumbnail = $thumb ? 'data:image/jpeg;base64,' . $thumb : null;
+                $recording->timemodified = time();
+
+                if($key !== false) {
+                    // This recording already exists in DB, update it
+                    $DB->update_record('meet_recordings', $recording);
+                } else {
+
+                    // Before inserting it to DB, need to change the Drive File permissions
+                    meet_remove_google_drive_file_permissions($gdriveservice, $attachment->getFileId());
+                    meet_set_google_drive_file_permission($gdriveservice, $attachment->getFileId());
+
+                    // Save
+                    $recording->name = $file->getName();
+                    $recording->description = null;
+                    $recording->hidden = 0;
+                    $recording->timecreated = time();
+                    $recording->id = $DB->insert_record('meet_recordings', $recording);
+
+                    // Trigger event
+                    if($forceupdate) {
+                        \mod_meet\event\recording_fetched_manually::create_from_recording($meet, $recording, $context)->trigger();
+                    } else {
+                        \mod_meet\event\recording_fetched_automatically::create_from_recording($meet, $recording, $context)->trigger();
+                    }
+                }
+            }
+        }
+
+        // Update meet
+        $meet->recordingslastcheck = time();
+        $meet->timemodified = time();
+        $DB->update_record('meet', $meet);
+
+        // Commit transaction
+        $DB->commit_delegated_transaction($transaction);
+    }
+
+    return $DB->get_records('meet_recordings', array('meetid' => $meet->id, 'deleted' => 0), 'gfiletimecreated');
 }

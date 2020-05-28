@@ -24,11 +24,14 @@
  * @author    Christian Bayer  (christian.bayer@universo.univates.br)
  */
 
-require('../../config.php');
-require_once($CFG->dirroot . '/mod/meet/lib.php');
+require_once('../../config.php');
+require_once($CFG->dirroot . '/mod/meet/view_lib.php');
 
-// Get course module ID
-$id = optional_param('id', 0, PARAM_INT);
+// Get parameters
+$id = required_param('id', PARAM_INT);
+$recordingid = optional_param('recordingid', 0, PARAM_INT);
+$forceupdate = optional_param('forceupdate', 0, PARAM_BOOL);
+$join = optional_param('join', 0, PARAM_BOOL);
 
 // Get course module
 $cm = get_coursemodule_from_id('meet', $id, 0, false, MUST_EXIST);
@@ -39,12 +42,38 @@ $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST)
 // Security check
 require_course_login($course, true, $cm);
 $context = context_module::instance($cm->id);
-require_capability('mod/meet:view', $context);
 
-// Get meet record
-$meet = $DB->get_record('meet', array('id' => $cm->instance), '*', MUST_EXIST);
 
-// Completion and trigger events
-meet_view($meet, $course, $cm, $context);
+if($join) {
 
-redirect($meet->gmeeturi);
+    require_capability('mod/meet:join', $context);
+
+    // Get meet record
+    $meet = $DB->get_record('meet', array('id' => $cm->instance), '*', MUST_EXIST);
+
+    // Redirect to meeting room
+    if(meet_is_meeting_room_available($meet)) {
+
+        // Trigger view event
+        meet_view($meet, null, true, $course, $cm, $context);
+
+        redirect($meet->gmeeturi);
+    }
+
+}
+
+if($recordingid){
+
+    require_capability('mod/meet:playrecordings', $context);
+
+    // Render view page
+    echo meet_render_recording_view_page($course, $cm, $context, $recordingid);
+
+} else {
+
+    require_capability('mod/meet:view', $context);
+
+    // Render view page
+    echo meet_render_view_page($course, $cm, $context, $forceupdate);
+
+}

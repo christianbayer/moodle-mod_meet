@@ -28,8 +28,14 @@ defined('MOODLE_INTERNAL') || die();
 global $DB;
 
 $logs = array(
-    array('module' => 'meet', 'action' => 'add', 'mtable' => 'meet', 'field' => 'summary'),
-    array('module' => 'meet', 'action' => 'update', 'mtable' => 'meet', 'field' => 'summary'),
-    array('module' => 'meet', 'action' => 'view', 'mtable' => 'meet', 'field' => 'summary'),
-    array('module' => 'meet', 'action' => 'delete', 'mtable' => 'meet', 'field' => 'summary'),
+    array('module' => 'meet', 'action' => 'add', 'mtable' => 'meet', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'update', 'mtable' => 'meet', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'view', 'mtable' => 'meet', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'delete', 'mtable' => 'meet', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'join', 'mtable'=> 'meet', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'delete recording', 'mtable' => 'meet_recordings', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'automatically fetch recording', 'mtable' => 'meet_recordings', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'manually fetch recording', 'mtable' => 'meet_recordings', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'view recording', 'mtable' => 'meet_recordings', 'field' => 'name'),
+    array('module' => 'meet', 'action' => 'update recording', 'mtable' => 'meet_recordings', 'field' => 'name'),
 );
