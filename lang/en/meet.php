@@ -41,13 +41,13 @@ $string['settings_heading_google_recordings_description'] = 'This section config
 $string['settings_credentials'] = 'Credentials file (.json)';
 $string['settings_credentials_description'] = 'The JSON file with the Google Service Account credentials data';
 $string['settings_calendar_owner'] = 'Calendar Owner E-mail';
-$string['settings_calendar_owner_description'] = 'The Google Calendar owner e-mail that will be used to create the events.';
+$string['settings_calendar_owner_description'] = 'The Google Calendar owner e-mail that will be used to create the events';
 $string['settings_calendar_id'] = 'Calendar ID';
-$string['settings_calendar_id_description'] = 'The Google Calendar ID that will be used to create the events. Needs to be created with the owner e-mail.';
+$string['settings_calendar_id_description'] = 'The Google Calendar ID that will be used to create the events. Needs to be created with the owner e-mail';
 $string['settings_recordings_fetch'] = 'Recordings fetch time';
-$string['settings_recordings_fetch_description'] = 'Recordings are fetched each time that an instance is viewed. This setting defines how long after the meeting end they will still be fetched. Default is 7 days.';
+$string['settings_recordings_fetch_description'] = 'Recordings are fetched each time that an instance is viewed. This setting defines how long after the meeting end they will still be fetched. Default is 7 days';
 $string['settings_recordings_cache'] = 'Recordings cache time';
-$string['settings_recordings_cache_description'] = 'Recordings are fetched each time that an instance is viewed. This setting defines the cache time for this fetch. Default is 2 hours.';
+$string['settings_recordings_cache_description'] = 'Recordings are fetched each time that an instance is viewed. This setting defines the cache time for this fetch. Default is 2 hours';
 
 // Form general
 $string['form_block_general'] = 'General';
@@ -58,7 +58,7 @@ $string['form_field_timestart_help'] = 'Start date and time of the conference';
 $string['form_field_timeend'] = 'Ends at';
 $string['form_field_timeend_help'] = 'End date and time of the conference';
 $string['form_field_notify'] = 'Notify participants';
-$string['form_field_notify_help'] = 'If checked, all participants will be notified of this event by e-mail';
+$string['form_field_notify_help'] = 'If checked, all participants will be notified of changes to this event by email';
 $string['form_field_description'] = 'Description';
 $string['form_field_visible'] = 'Visible';
 
@@ -106,23 +106,9 @@ $string['meet:playrecordings'] = 'Play a meeting record on a Meet activity';
 $string['meet:managerecordings'] = 'Manage Meet recordings';
 
 // Events
-$string['event_meeting_joined'] = 'Meeting joined';
+$string['event_meeting_joined'] = 'Joined the meeting';
 $string['event_recording_played'] = 'Recording played';
 $string['event_recording_updated'] = 'Recording updated';
 $string['event_recording_deleted'] = 'Recording deleted';
 $string['event_recording_manually_fetched'] = 'Recording manually fetched';
 $string['event_recording_automatically_fetched'] = 'Recording automatically fetched';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
