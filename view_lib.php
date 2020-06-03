@@ -29,7 +29,7 @@ require_once($CFG->dirroot . '/mod/meet/lib.php');
 defined('MOODLE_INTERNAL') || die;
 
 function meet_render_recording_view_page($course, $cm, $context, $recordingid) {
-    global $DB, $USER, $PAGE, $OUTPUT;
+    global $DB, $PAGE, $OUTPUT;
 
     // Get meet record
     $meet = $DB->get_record('meet', array('id' => $cm->instance), '*', MUST_EXIST);
@@ -73,7 +73,7 @@ function meet_render_recording_view_page($course, $cm, $context, $recordingid) {
 }
 
 function meet_render_view_page($course, $cm, $context, $forceupdate) {
-    global $DB, $USER, $PAGE, $OUTPUT;
+    global $DB, $PAGE, $OUTPUT;
 
     // Get meet record
     $meet = $DB->get_record('meet', array('id' => $cm->instance), '*', MUST_EXIST);
@@ -117,6 +117,7 @@ function meet_render_view_page($course, $cm, $context, $forceupdate) {
 
     if(meet_has_capability('managerecordings', $context)){
         $output .= meet_render_spacer();
+        $output .= '<p>' . get_string('update_recordings_help', 'meet') . '</p>';
         $output .= '<a href="' . (new moodle_url('/mod/meet/view.php', array('id' => $cm->id, 'forceupdate' => 1)))->out() . '" class="btn btn-primary">' . get_string('update_recordings', 'meet') . '</a>';
         $output .= meet_render_spacer();
     }
@@ -205,7 +206,7 @@ function meet_render_recordings_table($recordings, $cm, $context) {
                 'cmid' => $cm->id,
             )),
             $OUTPUT->pix_icon('t/edit', get_string('edit_recording', 'meet', $title)),
-            array('title' => get_string('editchapter', 'meet', $titleunescaped))
+            array('title' => get_string('edit_recording', 'meet', $titleunescaped))
         );
 
         // Hide/Show

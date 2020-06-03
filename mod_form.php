@@ -130,7 +130,7 @@ class mod_meet_mod_form extends moodleform_mod {
 
         // Set help button, numeric validation and edit values for each group
         for ($i = 0; $i < $repeats; $i ++) {
-            $mform->addHelpButton('reminders[' . $i . ']', 'form_label_reminder', 'meet');
+            $mform->addHelpButton('reminders[' . $i . ']', 'form_label_reminder_count', 'meet');
             $mform->addGroupRule('reminders[' . $i . ']', array(
                 'reminderbefore[' . $i . ']' => array(array(null, 'numeric', null, 'client')),
             ));

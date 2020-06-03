@@ -40,7 +40,6 @@ function meet_supports($feature) {
     switch($feature) {
         case FEATURE_GROUPS:                  return true;
         case FEATURE_GROUPINGS:               return true;
-        case FEATURE_GROUPMEMBERSONLY:        return true;
         case FEATURE_MOD_INTRO:               return true;
         case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
         case FEATURE_GRADE_HAS_GRADE:         return false;
@@ -88,13 +87,13 @@ function meet_update_instance($data, $mform) {
     global $DB;
 
     // Get the current record
-    $currentMeet = $mform->get_current();
+    $currentmeet = $mform->get_current();
 
     // Prepare data
-    meet_process_pre_save($data, $currentMeet);
+    meet_process_pre_save($data, $currentmeet);
 
     // Save participants, reminders and update the event in the Google Calendar
-    meet_process_post_save($data, $currentMeet);
+    meet_process_post_save($data, $currentmeet);
 
     // Update the meet record
     $DB->update_record('meet', $data);
@@ -115,18 +114,19 @@ function meet_delete_instance($id) {
         return false;
     }
 
+    // Check channel availability
+    meet_check_hooks_channel_expiration();
+
     // Get configs for meet
     $config = get_config('meet');
 
-    // Get the client
-    $gClient = meet_create_google_client($config);
-
-    // Get the service
-    $gCalendarService = meet_create_google_calendar_service($gClient);
+    // Get the client and service
+    $gclient = meet_create_google_client($config);
+    $gcalendarservice = meet_create_google_calendar_service($gclient);
 
     try {
         // Delete the event in the Google Calendar
-        meet_delete_google_calendar_event($gCalendarService, $config->calendarid, $meet->geventid, $meet->notify);
+        meet_delete_google_calendar_event($gcalendarservice, $config->calendarid, $meet->geventid, $meet->notify);
     } catch (Google_Service_Exception $exception) {
         // Already deleted
         if( ! $exception->getCode() === 410) {
@@ -150,6 +150,10 @@ function meet_delete_instance($id) {
  * @param null $current
  */
 function meet_process_pre_save(&$data, &$current = null) {
+
+    // Check channel availability
+    meet_check_hooks_channel_expiration();
+    
     // When creating a new record
     if( ! $current) {
         $data->timecreated = time();
@@ -170,8 +174,6 @@ function meet_process_pre_save(&$data, &$current = null) {
  *
  * @param      $data    FormData
  * @param null $current Current meet instance, when editing
- * @throws Google_Exception
- * @throws dml_exception
  */
 function meet_process_post_save(&$data, &$current = null) {
 
@@ -185,13 +187,13 @@ function meet_process_post_save(&$data, &$current = null) {
     $data->users = get_enrolled_users($data->context);
 
     // Set the client
-    $data->gClient = meet_create_google_client($data->config);
+    $data->gclient = meet_create_google_client($data->config);
 
     // Set the service
-    $data->gCalendarService = meet_create_google_calendar_service($data->gClient);
+    $data->gcalendarservice = meet_create_google_calendar_service($data->gclient);
 
     // Set the event
-    $data->gEvent = $current->geventid ? meet_get_google_calendar_event($data->gCalendarService, $data->config->calendarid, $current->geventid) : null;
+    $data->gevent = isset($current->geventid) ? meet_get_google_calendar_event($data->gcalendarservice, $data->config->calendarid, $current->geventid) : null;
 
     // Set completion date
     meet_update_completion_date($data);
@@ -209,32 +211,32 @@ function meet_process_post_save(&$data, &$current = null) {
     meet_create_or_update_google_calendar_event($data);
 
     // Set optional parameters for the service
-    $optParams = array(
+    $optparams = array(
         'conferenceDataVersion' => 1,
         'sendUpdates'           => $data->notify ? 'all' : 'none',
     );
 
     // Insert or update event into Google Calendar
-    if($current->geventid) {
-        $data->gEvent = $data->gCalendarService->events->update($data->config->calendarid, $data->gEvent->getId(), $data->gEvent, $optParams);
+    if(isset($current->geventid)) {
+        $data->gevent = $data->gcalendarservice->events->update($data->config->calendarid, $data->gevent->getId(), $data->gevent, $optparams);
     } else {
-        $data->gEvent = $data->gCalendarService->events->insert($data->config->calendarid, $data->gEvent, $optParams);
+        $data->gevent = $data->gcalendarservice->events->insert($data->config->calendarid, $data->gevent, $optparams);
     }
 
     // Set calendar properties
-    $data->icaluid = $data->gEvent->getICalUID();
-    $data->geventid = $data->gEvent->getId();
-    $data->geventuri = $data->gEvent->getHtmlLink();
-    $data->grequestid = $data->gEvent->getConferenceData()->getCreateRequest()->getRequestId();
+    $data->icaluid = $data->gevent->getICalUID();
+    $data->geventid = $data->gevent->getId();
+    $data->geventuri = $data->gevent->getHtmlLink();
+    $data->grequestid = $data->gevent->getConferenceData()->getCreateRequest()->getRequestId();
 
     // Set entry points
-    foreach ($data->gEvent->getConferenceData()->getEntryPoints() as $entryPoint) {
-        if($entryPoint->getEntryPointType() == 'video') {
-            $data->gmeeturi = $entryPoint->getUri();
+    foreach ($data->gevent->getConferenceData()->getEntryPoints() as $entrypoint) {
+        if($entrypoint->getEntryPointType() == 'video') {
+            $data->gmeeturi = $entrypoint->getUri();
         }
-        if($entryPoint->getEntryPointType() == 'phone') {
-            $data->gmeettel = $entryPoint->getLabel();
-            $data->gmeettelpin = $entryPoint->getPin();
+        if($entrypoint->getEntryPointType() == 'phone') {
+            $data->gmeettel = $entrypoint->getLabel();
+            $data->gmeettelpin = $entrypoint->getPin();
         }
     }
 }
@@ -252,9 +254,6 @@ function meet_update_completion_date($data) {
  * Function called when restoring a course module of type mod_meet.
  *
  * @param $meetid
- * @throws Google_Exception
- * @throws coding_exception
- * @throws dml_exception
  */
 function meet_process_post_restore($meetid) {
     global $DB;
@@ -270,8 +269,8 @@ function meet_process_post_restore($meetid) {
     $data->config = get_config('meet');
     $data->users = get_enrolled_users($data->context);
     $data->reminders = array_values($DB->get_records('meet_reminders', array('meetid' => $data->id)));
-    $data->gClient = meet_create_google_client($data->config);
-    $data->gCalendarService = meet_create_google_calendar_service($data->gClient);
+    $data->gclient = meet_create_google_client($data->config);
+    $data->gcalendarservice = meet_create_google_calendar_service($data->gclient);
 
     // Save participants
     meet_save_participants($data);
@@ -283,28 +282,28 @@ function meet_process_post_restore($meetid) {
     meet_create_or_update_google_calendar_event($data);
 
     // Set optional parameters for the service
-    $optParams = array(
+    $optparams = array(
         'conferenceDataVersion' => 1,
         'sendUpdates'           => $data->notify ? 'all' : 'none',
     );
 
     // Create the google calendar event
-    $data->gEvent = $data->gCalendarService->events->insert($data->config->calendarid, $data->gEvent, $optParams);
+    $data->gevent = $data->gcalendarservice->events->insert($data->config->calendarid, $data->gevent, $optparams);
 
     // Set calendar properties
-    $meet->icaluid = $data->gEvent->getICalUID();
-    $meet->geventid = $data->gEvent->getId();
-    $meet->geventuri = $data->gEvent->getHtmlLink();
-    $meet->grequestid = $data->gEvent->getConferenceData()->getCreateRequest()->getRequestId();
+    $meet->icaluid = $data->gevent->getICalUID();
+    $meet->geventid = $data->gevent->getId();
+    $meet->geventuri = $data->gevent->getHtmlLink();
+    $meet->grequestid = $data->gevent->getConferenceData()->getCreateRequest()->getRequestId();
 
     // Set entry points
-    foreach ($data->gEvent->getConferenceData()->getEntryPoints() as $entryPoint) {
-        if($entryPoint->getEntryPointType() == 'video') {
-            $meet->gmeeturi = $entryPoint->getUri();
+    foreach ($data->gevent->getConferenceData()->getEntryPoints() as $entrypoint) {
+        if($entrypoint->getEntryPointType() == 'video') {
+            $meet->gmeeturi = $entrypoint->getUri();
         }
-        if($entryPoint->getEntryPointType() == 'phone') {
-            $meet->gmeettel = $entryPoint->getLabel();
-            $meet->gmeettelpin = $entryPoint->getPin();
+        if($entrypoint->getEntryPointType() == 'phone') {
+            $meet->gmeettel = $entrypoint->getLabel();
+            $meet->gmeettelpin = $entrypoint->getPin();
         }
     }
 
@@ -316,8 +315,6 @@ function meet_process_post_restore($meetid) {
  * Save the participants
  *
  * @param $data
- * @throws coding_exception
- * @throws dml_exception
  */
 function meet_save_participants(&$data) {
     global $DB;
@@ -345,7 +342,7 @@ function meet_save_participants(&$data) {
         if(count($participantstobeupdated)) {
 
             // Get attendeees from event
-            $attendees = $data->gEvent ? $data->gEvent->getAttendees() : [];
+            $attendees = $data->gevent ? $data->gevent->getAttendees() : [];
 
             // Update participants that will not be removed neither added
             foreach ($participantstobeupdated as $userid) {
@@ -399,8 +396,6 @@ function meet_save_participants(&$data) {
  * Save the reminders
  *
  * @param $data
- * @throws coding_exception
- * @throws dml_exception
  */
 function meet_save_reminders(&$data) {
     global $DB;
@@ -523,10 +518,10 @@ function meet_remove_google_drive_file_permissions(Google_Service_Drive $service
  * @param boolean                       $notify
  */
 function meet_update_google_calendar_event($service, $calendarid, $event, $notify) {
-    $optParams = array(
+    $optparams = array(
         'sendUpdates' => $notify ? 'all' : 'none',
     );
-    $service->events->update($calendarid, $event->getId(), $event, $optParams);
+    $service->events->update($calendarid, $event->getId(), $event, $optparams);
 }
 
 /**
@@ -538,35 +533,35 @@ function meet_update_google_calendar_event($service, $calendarid, $event, $notif
 function meet_create_or_update_google_calendar_event($data) {
 
     // Create necessary objects
-    $gDateTimeStart = meet_create_google_calendar_event_date_time($data->timestart);
-    $gDateTimeEnd = meet_create_google_calendar_event_date_time($data->timeend);
-    $gAttendees = meet_create_google_calendar_event_attendees($data);
-    $gReminders = meet_create_google_calendar_event_reminders($data->reminders);
+    $gdatetimestart = meet_create_google_calendar_event_date_time($data->timestart);
+    $gdatetimeend = meet_create_google_calendar_event_date_time($data->timeend);
+    $gattendees = meet_create_google_calendar_event_attendees($data);
+    $greminders = meet_create_google_calendar_event_reminders($data->reminders);
 
-    if( ! isset($data->gEvent)) {
+    if( ! isset($data->gevent)) {
         // Create a new Google Calendar Event
-        $data->gEvent = new Google_Service_Calendar_Event();
+        $data->gevent = new Google_Service_Calendar_Event();
 
         // Set conference data
-        $data->gEvent->setConferenceData(meet_create_google_calendar_event_conference_data(meet_generate_request_id()));
+        $data->gevent->setConferenceData(meet_create_google_calendar_event_conference_data(meet_generate_id()));
     }
 
     // Set basic
-    $data->gEvent->setSummary($data->name);
-    $data->gEvent->setDescription($data->intro);
-    $data->gEvent->setStart($gDateTimeStart);
-    $data->gEvent->setEnd($gDateTimeEnd);
+    $data->gevent->setSummary($data->name);
+    $data->gevent->setDescription($data->intro);
+    $data->gevent->setStart($gdatetimestart);
+    $data->gevent->setEnd($gdatetimeend);
 
     // Set guest flags
-    $data->gEvent->setGuestsCanModify(false);
-    $data->gEvent->setGuestsCanInviteOthers(false);
-    $data->gEvent->setGuestsCanSeeOtherGuests(false);
+    $data->gevent->setGuestsCanModify(false);
+    $data->gevent->setGuestsCanInviteOthers(false);
+    $data->gevent->setGuestsCanSeeOtherGuests(false);
 
     // Set attendees
-    $data->gEvent->setAttendees($gAttendees);
+    $data->gevent->setAttendees($gattendees);
 
     // Set reminders
-    $data->gEvent->setReminders($gReminders);
+    $data->gevent->setReminders($greminders);
 }
 
 /**
@@ -580,11 +575,11 @@ function meet_create_google_calendar_event_date_time($timestamp) {
     $datetime = meet_get_date_time_from_timestamp($timestamp);
 
     // Set DateTime in RFC3339 format and timezone
-    $gDatetime = new Google_Service_Calendar_EventDateTime();
-    $gDatetime->setDateTime($datetime->format(DateTime::RFC3339));
-    $gDatetime->setTimeZone($datetime->getTimezone()->getName());
+    $gdatetime = new Google_Service_Calendar_EventDateTime();
+    $gdatetime->setDateTime($datetime->format(DateTime::RFC3339));
+    $gdatetime->setTimeZone($datetime->getTimezone()->getName());
 
-    return $gDatetime;
+    return $gdatetime;
 }
 
 /**
@@ -609,12 +604,12 @@ function meet_create_google_calendar_event_attendees($data) {
 /**
  * Create GoogleCalendarEventConferenceData object
  *
- * @param $requestId
+ * @param $requestid
  * @return Google_Service_Calendar_ConferenceData
  */
-function meet_create_google_calendar_event_conference_data($requestId) {
+function meet_create_google_calendar_event_conference_data($requestid) {
     $data = new Google_Service_Calendar_ConferenceData();
-    $data->setCreateRequest(meet_create_calendar_event_conference_request($requestId));
+    $data->setCreateRequest(meet_create_calendar_event_conference_request($requestid));
 
     return $data;
 }
@@ -622,12 +617,12 @@ function meet_create_google_calendar_event_conference_data($requestId) {
 /**
  * Create GoogleCalendarConferenceRequest object
  *
- * @param $requestId
+ * @param $requestid
  * @return Google_Service_Calendar_CreateConferenceRequest
  */
-function meet_create_calendar_event_conference_request($requestId) {
+function meet_create_calendar_event_conference_request($requestid) {
     $request = new Google_Service_Calendar_CreateConferenceRequest();
-    $request->setRequestId($requestId);
+    $request->setRequestId($requestid);
     $request->setConferenceSolutionKey(meet_create_calendar_event_conference_solution());
 
     return $request;
@@ -671,14 +666,12 @@ function meet_create_google_calendar_event_reminders($savedreminders) {
  *
  * @param $config
  * @return Google_Client
- * @throws Google_Exception
- * @throws dml_exception
  */
 function meet_create_google_client($config) {
-    $gClient = new Google_Client();
-    $gClient->setAuthConfig(meet_get_google_client_credentials($config->credentials));
-    $gClient->setApplicationName("Moodle");
-    $gClient->setScopes([
+    $gclient = new Google_Client();
+    $gclient->setAuthConfig(meet_get_google_client_credentials($config->credentials));
+    $gclient->setApplicationName("Moodle");
+    $gclient->setScopes([
         Google_Service_Calendar::CALENDAR,
         Google_Service_Calendar::CALENDAR_EVENTS,
         Google_Service_Drive::DRIVE,
@@ -686,29 +679,29 @@ function meet_create_google_client($config) {
         Google_Service_Drive::DRIVE_APPDATA,
         Google_Service_Drive::DRIVE_METADATA,
     ]);
-    $gClient->setSubject($config->calendarowner);
+    $gclient->setSubject($config->calendarowner);
 
-    return $gClient;
+    return $gclient;
 }
 
 /**
  * Create a GoogleServiceCalendar
  *
- * @param $gClient
+ * @param $gclient
  * @return Google_Service_Calendar
  */
-function meet_create_google_calendar_service($gClient) {
-    return new Google_Service_Calendar($gClient);
+function meet_create_google_calendar_service($gclient) {
+    return new Google_Service_Calendar($gclient);
 }
 
 /**
  * Create a GoogleServiceDrive
  *
- * @param $gClient
+ * @param $gclient
  * @return Google_Service_Drive
  */
-function meet_create_google_calendar_drive($gClient) {
-    return new Google_Service_Drive($gClient);
+function meet_create_google_calendar_drive($gclient) {
+    return new Google_Service_Drive($gclient);
 }
 
 /**
@@ -751,7 +744,7 @@ function meet_get_date_time_from_timestamp($timestamp) {
  *
  * @return string id
  */
-function meet_generate_request_id() {
+function meet_generate_id() {
     return uniqid();
 }
 
@@ -765,10 +758,10 @@ function meet_generate_request_id() {
  */
 function meet_delete_google_calendar_event($service, $calendarid, $eventid, $notify) {
     // Set optional parameters for the service
-    $optParams = array(
+    $optparams = array(
         'sendUpdates' => $notify ? 'all' : 'none',
     );
-    $service->events->delete($calendarid, $eventid, $optParams);
+    $service->events->delete($calendarid, $eventid, $optparams);
 }
 
 /**
@@ -777,8 +770,6 @@ function meet_delete_google_calendar_event($service, $calendarid, $eventid, $not
  * Called when the course module name is updated in the course page
  *
  * @param $meetid
- * @throws Google_Exception
- * @throws dml_exception
  */
 function meet_update_google_calendar_event_name($meetid) {
     global $DB;
@@ -993,14 +984,14 @@ function meet_prepare_update_events($meet, $cm = null) {
     $event->description  = format_module_intro('meet', $meet, $cm ? $cm->id : $meet->coursemodule);
     $event->timestart    = $meet->timestart;
     $event->timeduration = $meet->timeend - $meet->timestart;
-    $event->timesort     = $meet->timeend;
+    $event->timesort     = $meet->timestart;
     $event->courseid     = $meet->course;
     $event->groupid      = 0;
     $event->userid       = 0;
     $event->modulename   = 'meet';
     $event->instance     = $meet->id;
     $event->visible      = $cm ? $cm->visible : $meet->visible;
-    if ($event->id = $DB->get_field('event', 'id', array('modulename' => 'meet', 'instance' => $meet->id))) {
+    if ($event->id = $DB->get_field('event', 'id', array('modulename' => 'meet', 'instance' => $meet->id, 'eventtype' => MEET_EVENT_TYPE_MEETING_START))) {
         $calendarevent = calendar_event::load($event->id);
         $calendarevent->update($event, false);
     } else {
@@ -1107,6 +1098,9 @@ function meet_get_recordings($meet, $context, $forceupdate = false) {
     $config = get_config('meet');
     $now = time();
 
+    // Check channel availability
+    meet_check_hooks_channel_expiration();
+
     // Is time to fetch the recordings
     if(($now - $meet->timeend < $config->recordingsfetch && $now - $config->recordingscache > $meet->recordingslastcheck) || $forceupdate) {
 
@@ -1118,78 +1112,9 @@ function meet_get_recordings($meet, $context, $forceupdate = false) {
         $gcalendarservice = meet_create_google_calendar_service($gclient);
         $gdriveservice = meet_create_google_calendar_drive($gclient);
         $gevent = meet_get_google_calendar_event($gcalendarservice, $config->calendarid, $meet->geventid);
-        $gattachments = $gevent->getAttachments();
 
-        if(count($gattachments)) {
-
-            // Get current recordings
-            $currentrecordings = array_values($DB->get_records('meet_recordings', array('meetid' => $meet->id)));
-
-            // Run throug the calendar attachments
-            foreach ($gattachments as $attachment) {
-
-                // Check if is a video
-                if($attachment->getMimeType() !== 'video/mp4') {
-                    continue;
-                }
-
-                // Check if the record already exists
-                if(($key = array_search($attachment->getFileId(), array_column($currentrecordings, 'gfileid'))) !== false) {
-                    $recording = $currentrecordings[$key];
-
-                    // The recording is "deleted", don't update it
-                    if($recording->deleted) {
-                        continue;
-                    }
-
-                } else {
-
-                    // Create a new object
-                    $recording = new stdClass();
-                    $recording->courseid = $meet->course;
-                    $recording->meetid = $meet->id;
-                }
-
-                // Get the file
-                $file = meet_get_google_drive_file($gdriveservice, $attachment->getFileId());
-
-                // Get thubm as base64
-                $thumb = base64_encode(file_get_contents($file->getThumbnailLink()));
-
-                // Update obj
-                $recording->gfileid = $file->getId();
-                $recording->gfilename = $file->getName();
-                $recording->gfileduration = $file->getVideoMediaMetadata()->getDurationMillis();
-                $recording->gfiletimecreated = (new DateTime($file->getCreatedTime()))->getTimestamp();
-                $recording->gfiletimemodified = (new DateTime($file->getModifiedTime()))->getTimestamp();
-                $recording->gfilethumbnail = $thumb ? 'data:image/jpeg;base64,' . $thumb : null;
-                $recording->timemodified = time();
-
-                if($key !== false) {
-                    // This recording already exists in DB, update it
-                    $DB->update_record('meet_recordings', $recording);
-                } else {
-
-                    // Before inserting it to DB, need to change the Drive File permissions
-                    meet_remove_google_drive_file_permissions($gdriveservice, $attachment->getFileId());
-                    meet_set_google_drive_file_permission($gdriveservice, $attachment->getFileId());
-
-                    // Save
-                    $recording->name = $file->getName();
-                    $recording->description = null;
-                    $recording->hidden = 0;
-                    $recording->timecreated = time();
-                    $recording->id = $DB->insert_record('meet_recordings', $recording);
-
-                    // Trigger event
-                    if($forceupdate) {
-                        \mod_meet\event\recording_fetched_manually::create_from_recording($meet, $recording, $context)->trigger();
-                    } else {
-                        \mod_meet\event\recording_fetched_automatically::create_from_recording($meet, $recording, $context)->trigger();
-                    }
-                }
-            }
-        }
+        // Update recordings
+        meet_update_recordings($meet, $gevent, $gdriveservice, true, $context, $forceupdate);
 
         // Update meet
         $meet->recordingslastcheck = time();
@@ -1201,4 +1126,120 @@ function meet_get_recordings($meet, $context, $forceupdate = false) {
     }
 
     return $DB->get_records('meet_recordings', array('meetid' => $meet->id, 'deleted' => 0), 'gfiletimecreated');
+}
+
+function meet_get_recording_thumbnail_from_attachment($file){
+    return $file->getThumbnailLink() ? ('data:image/jpeg;base64,' . base64_encode(file_get_contents($file->getThumbnailLink()))) : null;
+}
+
+/**
+ * Updates the recordings of a meeting
+ *
+ * @param $meet
+ * @param $event
+ */
+function meet_update_recordings($meet, $event, $gdriveservice, $triggerevent = false, $context = null, $forceupdate = null) {
+    global $DB;
+
+    // The event has attachments
+    if(count($event->getAttachments())) {
+
+        // Get current saved recordings
+        $currentrecordings = array_values($DB->get_records('meet_recordings', array('meetid' => $meet->id)));
+
+        // Run throug the event attachments
+        foreach ($event->getAttachments() as $attachment) {
+
+            // Check if is not a video
+            if($attachment->getMimeType() !== 'video/mp4') {
+                continue;
+            }
+
+            // Check if the record already exists
+            if(($key = array_search($attachment->getFileId(), array_column($currentrecordings, 'gfileid'))) !== false) {
+
+                // Get the recording
+                $recording = $currentrecordings[$key];
+
+                // The recording is "deleted", don't update it
+                if($recording->deleted) {
+                    continue;
+                }
+
+            } else {
+
+                // Create a new object
+                $recording = new stdClass();
+                $recording->courseid = $meet->course;
+                $recording->meetid = $meet->id;
+                $recording->description = null;
+                $recording->hidden = 0;
+                $recording->timecreated = time();
+
+            }
+
+            // Get the file
+            $file = meet_get_google_drive_file($gdriveservice, $attachment->getFileId());
+
+            // Update recording data
+            $recording->gfileid = $file->getId();
+            $recording->gfilename = $file->getName();
+            $recording->gfileduration = $file->getVideoMediaMetadata()->getDurationMillis();
+            $recording->gfiletimecreated = (new DateTime($file->getCreatedTime()))->getTimestamp();
+            $recording->gfiletimemodified = (new DateTime($file->getModifiedTime()))->getTimestamp();
+            $recording->gfilethumbnail = meet_get_recording_thumbnail_from_attachment($file);
+            $recording->timemodified = time();
+
+            if($key !== false) {
+
+                // This recording already exists in DB, update it
+                $DB->update_record('meet_recordings', $recording);
+
+            } else {
+
+                // Before inserting it to DB, need to change the Drive File permissions
+                meet_remove_google_drive_file_permissions($gdriveservice, $attachment->getFileId());
+                meet_set_google_drive_file_permission($gdriveservice, $attachment->getFileId());
+
+                // Save
+                $recording->name = $file->getName();
+                $recording->id = $DB->insert_record('meet_recordings', $recording);
+
+                // Trigger event
+                if($triggerevent && $forceupdate) {
+                    \mod_meet\event\recording_fetched_manually::create_from_recording($meet, $recording, $context)->trigger();
+                }
+                if($triggerevent && ! $forceupdate) {
+                    \mod_meet\event\recording_fetched_automatically::create_from_recording($meet, $recording, $context)->trigger();
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Check for the hooks channel expiration time. If is expired, it will be renewed.
+ */
+function meet_check_hooks_channel_expiration() {
+    // Get configs for meet
+    $config = get_config('meet');
+
+    // Check if is expired
+    if(!isset($config->channelid) || $config->channelexpiration <= time()){
+        global $CFG;
+        
+        // Get the client and service
+        $gclient = meet_create_google_client($config);
+        $gcalendarservice = meet_create_google_calendar_service($gclient);
+        
+        // Create the channel
+        $gchannel = new Google_Service_Calendar_Channel();
+        $gchannel->setId(meet_generate_id());
+        $gchannel->setType('web_hook');
+        $gchannel->setAddress($CFG->wwwroot . "/mod/meet/watcher.php");
+        $gchannel = $gcalendarservice->events->watch($config->calendarid, $gchannel);
+
+        set_config('channelid', $gchannel->getId(), 'meet');
+        set_config('channelexpiration', $gchannel->getExpiration(), 'meet');
+    }
 }

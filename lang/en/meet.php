@@ -65,7 +65,7 @@ $string['form_field_visible'] = 'Visible';
 // Form reminders
 $string['form_block_reminders'] = 'Reminders';
 $string['form_label_reminder_count'] = 'Reminder {no}';
-$string['form_label_reminder_help'] = 'Set a reminder for the participants';
+$string['form_label_reminder_count_help'] = 'Set a reminder for the participants';
 $string['form_field_reminder_option_email'] = 'E-mail';
 $string['form_field_reminder_option_popup'] = 'Notification';
 $string['form_field_reminder_option_minutes'] = 'Minutes';
@@ -92,6 +92,7 @@ $string['recording_deleted'] = 'Recording "{$a->title}" was deleted';
 $string['no_recordings'] = 'There are no recording to show.';
 $string['error_recording'] = 'The recording was not found.';
 $string['update_recordings'] = 'Update recordings';
+$string['update_recordings_help'] = 'The recordings are automatically fetched, but if something got wrong or they are taking too long to update, you can do it manually.';
 $string['meeting_room_not_available'] = 'This meeting room is not available yet.';
 $string['meeting_room_available'] = 'The meeting room is ready.';
 $string['meeting_room_closed'] = 'This meeting room is closed.';
@@ -112,3 +113,6 @@ $string['event_recording_updated'] = 'Recording updated';
 $string['event_recording_deleted'] = 'Recording deleted';
 $string['event_recording_manually_fetched'] = 'Recording manually fetched';
 $string['event_recording_automatically_fetched'] = 'Recording automatically fetched';
+
+// Errors
+$string['invalid_access'] = 'Invalid access.';

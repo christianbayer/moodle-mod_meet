@@ -65,7 +65,7 @@ $string['form_field_visible'] = 'Visível';
 // Form reminders
 $string['form_block_reminders'] = 'Lembretes';
 $string['form_label_reminder_count'] = 'Lembrete {no}';
-$string['form_label_reminder_help'] = 'Definir um lembrete para os participantes';
+$string['form_label_reminder_count_help'] = 'Definir um lembrete para os participantes';
 $string['form_field_reminder_option_email'] = 'E-mail';
 $string['form_field_reminder_option_popup'] = 'Notificação';
 $string['form_field_reminder_option_minutes'] = 'Minutos';
@@ -92,6 +92,7 @@ $string['recording_deleted'] = 'A gravação "{$a->title}" foi excluída';
 $string['no_recordings'] = 'Não há gravações para serem exibidas.';
 $string['error_recording'] = 'A gravação não foi encontrada.';
 $string['update_recordings'] = 'Atualizar gravações';
+$string['update_recordings_help'] = 'As gravações são atualizadas automaticamente. Contudo, se algo deu errado e elas estiverem demorando para serem atualizadas, você pode fazer isto manualmente.';
 $string['meeting_room_not_available'] = 'Esta sala de reuniões ainda não está disponível.';
 $string['meeting_room_available'] = 'A sala de reuniões está pronta.';
 $string['meeting_room_closed'] = 'A sala de reuniões está fechada.';
@@ -112,3 +113,6 @@ $string['event_recording_updated'] = 'Gravação atualizada';
 $string['event_recording_deleted'] = 'Gravação excluída';
 $string['event_recording_manually_fetched'] = 'Gravação buscada manualmente';
 $string['event_recording_automatically_fetched'] = 'Gravação buscada automaticamente';
+
+// Errors
+$string['invalid_access'] = 'Acesso inválido.';
