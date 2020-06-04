@@ -52,6 +52,16 @@ function meet_supports($feature) {
 }
 
 /**
+ * Map icons for font-awesome themes.
+ */
+function mod_meet_get_fontawesome_icon_map() {
+    return array(
+        'mod_meet:link' => 'fa-external-link',
+        'mod_meet:error' => 'fa-exclamation-circle text-danger',
+    );
+}
+
+/**
  * Add meet instance.
  *
  * @param stdClass $data
@@ -1184,7 +1194,7 @@ function meet_update_recordings($meet, $event, $gdriveservice, $triggerevent = f
             // Update recording data
             $recording->gfileid = $file->getId();
             $recording->gfilename = $file->getName();
-            $recording->gfileduration = $file->getVideoMediaMetadata()->getDurationMillis();
+            $recording->gfileduration = $file->getVideoMediaMetadata() ? $file->getVideoMediaMetadata()->getDurationMillis() : 0;
             $recording->gfiletimecreated = (new DateTime($file->getCreatedTime()))->getTimestamp();
             $recording->gfiletimemodified = (new DateTime($file->getModifiedTime()))->getTimestamp();
             $recording->gfilethumbnail = meet_get_recording_thumbnail_from_attachment($file);

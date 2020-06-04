@@ -38,8 +38,8 @@ function meet_render_recording_view_page($course, $cm, $context, $recordingid) {
     $recording = $DB->get_record('meet_recordings', array('id' => $recordingid, 'meetid' => $meet->id, 'deleted' => 0));
 
     // Recording not found or hidden
-    if (!$recording || ($recording->hidden && !meet_has_capability('managerecordings', $context))) {
-        throw new moodle_exception('error_recording', 'meet');
+    if (!$recording || (!meet_has_capability('managerecordings', $context) && ($recording->hidden || $recording->gfileduration == 0))) {
+        throw new moodle_exception('error_recording_not_found', 'meet');
     }
 
     // Trigger view event
@@ -182,13 +182,29 @@ function meet_render_recordings_table($recordings, $cm, $context) {
         return $dateTime->format('d/m/y H:i:s');
     };
 
-    $duration = function ($millis) {
+    $duration = function ($millis) use  ($OUTPUT) {
         $t = round($millis / 1000);
+        $time = sprintf('%02d:%02d:%02d', ($t / 3600), ($t / 60 % 60), $t % 60);
 
-        return sprintf('%02d:%02d:%02d', ($t / 3600), ($t / 60 % 60), $t % 60);
+        if($millis == 0) {
+            $time = '<span style="display: inline-block; vertical-align: middle">' . $time . '</span> ';
+            $time .= '<a class="btn btn-link p-0" ' .
+                'style="display: inline-block; vertical-align: middle"' .
+                'role="presentation" ' .
+                'data-container="body" ' .
+                'data-toggle="popover" ' .
+                'data-placement="left" ' .
+                'data-content="' . get_string('broken_recording', 'meet') . '" ' .
+                'tabindex="0" ' .
+                'data-trigger="hover">' .
+                $OUTPUT->pix_icon('error', '', 'mod_meet') .
+                '</a>';
+        }
+
+        return $time;
     };
 
-    $actions = function ($id, $title, $hidden) use ($OUTPUT, $USER, $context, $cm){
+    $actions = function ($id, $title, $hidden, $fileid) use ($OUTPUT, $USER, $context, $cm){
 
         // Get the formated title
         $titleunescaped = trim(format_string($title, true, array(
@@ -232,6 +248,13 @@ function meet_render_recordings_table($recordings, $cm, $context) {
             );
         }
 
+        // Open in drive
+        $o .= html_writer::link(
+            'https://drive.google.com/file/d/' . $fileid . '/view',
+            $OUTPUT->pix_icon('link', get_string('open_in_drive', 'meet'), 'mod_meet'),
+            array('target' => '_blank', 'title'  => get_string('open_in_drive', 'meet'))
+        );
+
         // Delete
         $o .= $OUTPUT->action_icon(
             new moodle_url('delete.php', [
@@ -266,7 +289,8 @@ function meet_render_recordings_table($recordings, $cm, $context) {
 
     // Set data
     foreach ($recordings as $recording) {
-        if($recording->hidden && !meet_has_capability('managerecordings', $context)){
+        if(!meet_has_capability('managerecordings', $context)
+            && ($recording->hidden || $recording->gfileduration == 0)){
             continue;
         }
         $data = array(
@@ -278,7 +302,7 @@ function meet_render_recordings_table($recordings, $cm, $context) {
             $duration($recording->gfileduration),
         );
         if(meet_has_capability('managerecordings', $context)){
-            $data[] = $actions($recording->id, $recording->name, $recording->hidden);
+            $data[] = $actions($recording->id, $recording->name, $recording->hidden, $recording->gfileid);
         }
         $table->data[] = $data;
     }
