@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * The mod_meet recording manually fetched event
+ * The mod_meet meeting joined event.
  *
  * @package   mod_meet
  * @copyright 2020 onwards, Univates
@@ -28,53 +28,55 @@ namespace mod_meet\event;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * The mod_meet recording manually fetched event class
+ * The mod_meet recording played event class.
  *
  * @package   mod_meet
  * @copyright 2020 onwards, Univates
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @author    Christian Bayer  (christian.bayer@universo.univates.br)
  */
-class recording_fetched_manually extends \core\event\base {
+class report_viewed extends \core\event\base {
 
-    public static function create_from_recording(\stdClass $meet, \stdClass $recording, \context_module $context) {
+    public static function create_from_meet(\stdClass $meet, $reportname, \context_module $context) {
         $data = array(
             'context'  => $context,
-            'objectid' => $recording->id,
+            'objectid' => $meet->id,
+            'other' => array(
+                'reportname' => $reportname,
+            ),
         );
         $event = self::create($data);
         $event->add_record_snapshot('meet', $meet);
-        $event->add_record_snapshot('meet_recordings', $recording);
 
         return $event;
     }
 
     public function get_description() {
-        return "The user with id '$this->userid' manually fetched the recording with id '$this->objectid' " .
-            "for the 'meet' activity with course module id '$this->contextinstanceid'.";
+        return "The user with id '$this->userid' viewed the report '" . $this->other['reportname'] . "' for the " .
+            "'meet' activity with course module id '$this->contextinstanceid'.";
     }
 
     protected function get_legacy_logdata() {
-        return array($this->courseid, 'meet', 'manually fetch recording', 'view.php?id=' . $this->contextinstanceid .
-            '&recordingid=' . $this->objectid, $this->objectid, $this->contextinstanceid);
+        return array($this->courseid, 'meet', 'report', 'report.php?id=' . $this->contextinstanceid . '&mode=' .
+                    $this->other['reportname'], $this->objectid, $this->contextinstanceid);
     }
 
     public static function get_name() {
-        return get_string('event_recording_manually_fetched', 'meet');
+        return get_string('event_report_viewed', 'meet');
     }
 
     public function get_url() {
-        return new \moodle_url('/mod/meet/view.php', array('id' => $this->contextinstanceid, 'recordingid' => $this->objectid));
+        return new \moodle_url('/mod/meet/report.php',
+            array('id' => $this->contextinstanceid, 'mode' => $this->other['reportname']));
     }
 
     protected function init() {
-        $this->data['crud'] = 'c';
-        $this->data['edulevel'] = self::LEVEL_TEACHING;
-        $this->data['objecttable'] = 'meet_recordings';
+        $this->data['crud'] = 'r';
+        $this->data['edulevel'] = self::LEVEL_PARTICIPATING;
+        $this->data['objecttable'] = 'meet';
     }
 
     public static function get_objectid_mapping() {
-        return array('db' => 'meet_recordings', 'restore' => 'meet_recording');
+        return array('db' => 'meet', 'restore' => 'meet');
     }
-
 }

@@ -54,6 +54,14 @@ if ($ADMIN->fulltree) {
         ''
     ));
 
+    // Enable reports
+    $settings->add(new admin_setting_configcheckbox(
+        'meet/enablereports',
+        get_string('settings_enable_reports', 'mod_meet'),
+        get_string('settings_enable_reports_description', 'mod_meet'),
+        0
+    ));
+
     // Recordings heading
     $settings->add(new admin_setting_heading('settings_heading_google_recordings', get_string('settings_heading_google_recordings', 'meet'), get_string('settings_heading_google_recordings_description', 'meet')));
 

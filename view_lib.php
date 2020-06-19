@@ -165,7 +165,7 @@ function meet_render_recordings_table($recordings, $cm, $context) {
     };
 
     $thumbnail = function ($id, $thumb) use ($cm) {
-        $o = 'Unavailable';
+        $o = get_string('unavailable', 'meet');
         if($thumb) {
             $o = '<a href="' . (new moodle_url('/mod/meet/view.php', array('id' => $cm->id, 'recordingid' => $id)))->out() . '">';
             $o .= '<img src="' . $thumb . '"/>';

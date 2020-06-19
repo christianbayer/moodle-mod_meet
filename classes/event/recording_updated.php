@@ -56,7 +56,7 @@ class recording_updated extends \core\event\base {
 
     protected function get_legacy_logdata() {
         return array($this->courseid, 'meet', 'update recording', 'view.php?id=' . $this->contextinstanceid .
-                    '&recordingid=' . $this->objectid, $this->objectid, $this->contextinstanceid);
+            '&recordingid=' . $this->objectid, $this->objectid, $this->contextinstanceid);
     }
 
     public static function get_name() {

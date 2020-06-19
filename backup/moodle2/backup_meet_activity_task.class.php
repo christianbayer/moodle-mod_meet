@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Defines backup_assignment_activity_task class
+ * Defines backup_meet_activity_task class
  *
  * @package   mod_meet
  * @copyright 2020 onwards, Univates

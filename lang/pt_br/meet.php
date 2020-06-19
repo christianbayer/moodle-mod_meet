@@ -44,6 +44,8 @@ $string['settings_calendar_owner'] = 'E-mail do proprietário do calendário';
 $string['settings_calendar_owner_description'] = 'O e-mail do proprietário do Google Agenda que será usado para criar os eventos';
 $string['settings_calendar_id'] = 'ID da Agenda';
 $string['settings_calendar_id_description'] = 'O ID do Google Agenda que será usado para criar os eventos. Precisa ser criado com o email do proprietário';
+$string['settings_enable_reports'] = 'Habilitar relatórios';
+$string['settings_enable_reports_description'] = 'Se os relatórios do Meet serão exibidos ou não. Nota: essa configuração requer privilégios de relatório para a conta do G Suite fornecida (por exemplo, conta de administrador).';
 $string['settings_recordings_fetch'] = 'Tempo de busca das gravações';
 $string['settings_recordings_fetch_description'] = 'As gravações são buscadas sempre que uma instância é exibida. Essa configuração define quanto tempo após o término da reunião eles ainda serão buscados. O padrão é 7 dias';
 $string['settings_recordings_cache'] = 'Tempo de cache das gravações';
@@ -81,10 +83,19 @@ $string['open_in_drive'] = 'Abrir no Drive';
 $string['broken_recording'] = 'Esta gravação parece estar com problemas e não será mostrada aos alunos';
 $string['name'] = 'Nome';
 $string['description'] = 'Descrição';
+$string['email'] = 'E-mail';
+$string['joined_at'] = 'Entrou às';
+$string['left_at'] = 'Saiu às';
+$string['call_duration'] = 'Duração da chamada';
+$string['video_duration'] = 'Duração de vídeo';
+$string['viewers'] = 'Participantes';
+$string['page_size'] = 'Tamanho da página';
+$string['fields'] = 'Campos';
 $string['thumbnail'] = 'Thumbnail';
 $string['date'] = 'Data';
 $string['duration'] = 'Duração';
 $string['actions'] = 'Ações';
+$string['unavailable'] = 'Indisponível';
 $string['delete_recording'] = 'Excluir a gravação "{$a}"';
 $string['edit_recording'] = 'Editar a gravação "{$a}"';
 $string['editing_recording'] = 'Editando gravação';
@@ -99,7 +110,7 @@ $string['meeting_room_not_available'] = 'Esta sala de reuniões ainda não está
 $string['meeting_room_available'] = 'A sala de reuniões está pronta.';
 $string['meeting_room_closed'] = 'A sala de reuniões está fechada.';
 $string['meeting_room_see_recordings'] = 'Você pode visualizar as gravações (nem sempre disponíveis) abaixo.';
-$string['meeting_room_forbidden'] = 'YVocê não pode ingressar nesta sala de reuniões.';
+$string['meeting_room_forbidden'] = 'Você não pode ingressar nesta sala de reuniões.';
 
 // Capabilities
 $string['meet:addinstance'] = 'Adicionar uma nova atividade do Meet';
@@ -113,8 +124,22 @@ $string['event_meeting_joined'] = 'Juntou-se à reunião';
 $string['event_recording_played'] = 'Gravação reproduzida';
 $string['event_recording_updated'] = 'Gravação atualizada';
 $string['event_recording_deleted'] = 'Gravação excluída';
-$string['event_recording_manually_fetched'] = 'Gravação buscada manualmente';
-$string['event_recording_automatically_fetched'] = 'Gravação buscada automaticamente';
+$string['event_recording_fetched'] = 'Gravação buscada';
+$string['event_report_viewed'] = 'Relatório visualizado';
 
 // Errors
 $string['invalid_access'] = 'Acesso inválido.';
+$string['invalid_report'] = 'Relatório inválido.';
+$string['reports_disabled'] = 'Os relatórios estão desabilitados.';
+
+// Reports
+$string['report'] = 'Relatório';
+$string['reports'] = 'Relatórios';
+$string['report_mode_overview'] = 'Visão geral';
+$string['report_mode_attendance'] = 'Lista de presença';
+$string['report_block_report_includes'] = 'O que incluir no relatório';
+$string['report_block_report_display'] = 'Opções de visualização';
+$string['report_viewers_option_all'] = 'Todos participantes';
+$string['report_viewers_option_enrolled'] = 'Apenas usuários inscritos no curso';
+$string['report_viewers_option_not_enrolled'] = 'Apenas usuário não inscritos no curso';
+$string['update_report'] = 'Atualizar relatório';

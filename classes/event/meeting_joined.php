@@ -37,7 +37,7 @@ defined('MOODLE_INTERNAL') || die();
  */
 class meeting_joined extends \core\event\base {
 
-    public static function create_from_recording(\stdClass $meet, \context_module $context) {
+    public static function create_from_meet(\stdClass $meet, \context_module $context) {
         $data = array(
             'context'  => $context,
             'objectid' => $meet->id,

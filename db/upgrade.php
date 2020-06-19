@@ -66,12 +66,37 @@ function xmldb_meet_upgrade($oldversion) {
         $field = new xmldb_field('recordingslastcheck', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timeend');
 
         // Add field
-        if (!$dbman->field_exists($table, $field)) {
+        if( ! $dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
 
-        // Assign savepoint reached.
+        // Meet savepoint reached.
         upgrade_mod_savepoint(true, 2020052601, 'meet');
+    }
+
+    if($oldversion < 2020061900) {
+
+        // Define table meet to be updated
+        $table = new xmldb_table('meet');
+        $field = new xmldb_field('gmeetid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'geventuri');
+
+        // Add field
+        if( ! $dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Set default value for current meetings
+        $instances = $DB->get_records('meet');
+        foreach ($instances as $instance) {
+            $instance->gmeetid = substr($instance->gmeeturi, strrpos($instance->gmeeturi, '/') + 1);
+            $DB->update_record('meet', $instance);
+        }
+
+        // Set field as not null
+        $dbman->change_field_notnull($table, $field);
+
+        // Meet savepoint reached.
+        upgrade_mod_savepoint(true, 2020061900, 'meet');
     }
 
     return true;

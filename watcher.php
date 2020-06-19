@@ -45,10 +45,12 @@ $config = get_config('meet');
 if($headers['X-Goog-Channel-ID'] === $config->channelid){
     global $DB;
 
+    error_log('Log: Meet watcher');
+
     // Get the client and services
     $gclient = meet_create_google_client($config);
     $gcalendarservice = meet_create_google_calendar_service($gclient);
-    $gdriveservice = meet_create_google_calendar_drive($gclient);
+    $gdriveservice = meet_create_google_drive_service($gclient);
 
     // Get the events
     $events = $gcalendarservice->events->listEvents($config->calendarid, array(

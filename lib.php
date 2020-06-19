@@ -66,7 +66,7 @@ function mod_meet_get_fontawesome_icon_map() {
  *
  * @param stdClass $data
  * @param stdClass $mform
- * @return int new book instance id
+ * @return int new meet instance id
  */
 function meet_add_instance($data, $mform) {
     global $DB;
@@ -154,6 +154,44 @@ function meet_delete_instance($id) {
 }
 
 /**
+ * This function extends the settings navigation block for the site.
+ *
+ * @param settings_navigation $settingsnav The settings navigation object
+ * @param navigation_node $meetnode The node to add module settings to
+ * @return void
+ */
+function meet_extend_settings_navigation($settingsnav, $meetnode) {
+    global $PAGE, $CFG;
+
+    // We want to add these new nodes after the Edit settings node, and before the
+    // Locally assigned roles node. Of course, both of those are controlled by capabilities.
+    $keys = $meetnode->get_children_key_list();
+    $beforekey = null;
+    $i = array_search('modedit', $keys);
+    if($i === false and array_key_exists(0, $keys)) {
+        $beforekey = $keys[0];
+    } else if(array_key_exists($i + 1, $keys)) {
+        $beforekey = $keys[$i + 1];
+    }
+
+    // Get plugin config
+    $config = get_config('meet');
+
+    if(has_capability('mod/meet:viewreports', $PAGE->cm->context) && $config->enablereports) {
+
+        $url = new moodle_url('/mod/meet/report.php', array('id' => $PAGE->cm->id));
+        $reportnode = $meetnode->add_node(navigation_node::create(get_string('reports', 'meet'), $url,
+            navigation_node::TYPE_SETTING), $beforekey);
+
+        foreach (array('overview', 'attendance') as $mode) {
+            $url = new moodle_url('/mod/meet/report.php', array('id' => $PAGE->cm->id, 'mode' => $mode));
+            $reportnode->add_node(navigation_node::create(get_string('report_mode_' . $mode, 'meet'), $url,
+                navigation_node::TYPE_SETTING, null, 'mod_meet_report_' . $mode));
+        }
+    }
+}
+
+/**
  * Prepare data for save
  *
  * @param      $data
@@ -234,10 +272,12 @@ function meet_process_post_save(&$data, &$current = null) {
     }
 
     // Set calendar properties
-    $data->icaluid = $data->gevent->getICalUID();
+    $data->gicaluid = $data->gevent->getICalUID();
     $data->geventid = $data->gevent->getId();
     $data->geventuri = $data->gevent->getHtmlLink();
+    $data->geventuri = $data->gevent->getHtmlLink();
     $data->grequestid = $data->gevent->getConferenceData()->getCreateRequest()->getRequestId();
+    $data->gmeetid = $data->gevent->getConferenceData()->getConferenceId();
 
     // Set entry points
     foreach ($data->gevent->getConferenceData()->getEntryPoints() as $entrypoint) {
@@ -301,7 +341,7 @@ function meet_process_post_restore($meetid) {
     $data->gevent = $data->gcalendarservice->events->insert($data->config->calendarid, $data->gevent, $optparams);
 
     // Set calendar properties
-    $meet->icaluid = $data->gevent->getICalUID();
+    $meet->gicaluid = $data->gevent->getICalUID();
     $meet->geventid = $data->gevent->getId();
     $meet->geventuri = $data->gevent->getHtmlLink();
     $meet->grequestid = $data->gevent->getConferenceData()->getCreateRequest()->getRequestId();
@@ -677,7 +717,10 @@ function meet_create_google_calendar_event_reminders($savedreminders) {
  * @param $config
  * @return Google_Client
  */
-function meet_create_google_client($config) {
+function meet_create_google_client($config = null) {
+    if(!$config) {
+        $config = get_config('meet');
+    }
     $gclient = new Google_Client();
     $gclient->setAuthConfig(meet_get_google_client_credentials($config->credentials));
     $gclient->setApplicationName("Moodle");
@@ -688,6 +731,7 @@ function meet_create_google_client($config) {
         Google_Service_Drive::DRIVE_FILE,
         Google_Service_Drive::DRIVE_APPDATA,
         Google_Service_Drive::DRIVE_METADATA,
+        Google_Service_Reports::ADMIN_REPORTS_AUDIT_READONLY,
     ]);
     $gclient->setSubject($config->calendarowner);
 
@@ -700,7 +744,10 @@ function meet_create_google_client($config) {
  * @param $gclient
  * @return Google_Service_Calendar
  */
-function meet_create_google_calendar_service($gclient) {
+function meet_create_google_calendar_service($gclient = null) {
+    if( ! $gclient) {
+        $gclient = meet_create_google_client();
+    }
     return new Google_Service_Calendar($gclient);
 }
 
@@ -710,8 +757,24 @@ function meet_create_google_calendar_service($gclient) {
  * @param $gclient
  * @return Google_Service_Drive
  */
-function meet_create_google_calendar_drive($gclient) {
+function meet_create_google_drive_service($gclient = null) {
+    if( ! $gclient) {
+        $gclient = meet_create_google_client();
+    }
     return new Google_Service_Drive($gclient);
+}
+
+/**
+ * Create a GoogleServiceReports
+ *
+ * @param $gclient
+ * @return Google_Service_Reports
+ */
+function meet_create_google_reports_service($gclient = null) {
+    if( ! $gclient) {
+        $gclient = meet_create_google_client();
+    }
+    return new Google_Service_Reports($gclient);
 }
 
 /**
@@ -904,7 +967,7 @@ function meet_remove_user_from_event($meetorid, $userorid) {
 function meet_view($meet, $recording, $join, $course, $cm, $context) {
 
     if($join) {
-        \mod_meet\event\meeting_joined::create_from_recording($meet, $context)->trigger();
+        \mod_meet\event\meeting_joined::create_from_meet($meet, $context)->trigger();
 
         // Completion
         $completion = new completion_info($course);
@@ -1120,7 +1183,7 @@ function meet_get_recordings($meet, $context, $forceupdate = false) {
         // Get event attachments
         $gclient = meet_create_google_client($config);
         $gcalendarservice = meet_create_google_calendar_service($gclient);
-        $gdriveservice = meet_create_google_calendar_drive($gclient);
+        $gdriveservice = meet_create_google_drive_service($gclient);
         $gevent = meet_get_google_calendar_event($gcalendarservice, $config->calendarid, $meet->geventid);
 
         // Update recordings
@@ -1216,11 +1279,8 @@ function meet_update_recordings($meet, $event, $gdriveservice, $triggerevent = f
                 $recording->id = $DB->insert_record('meet_recordings', $recording);
 
                 // Trigger event
-                if($triggerevent && $forceupdate) {
-                    \mod_meet\event\recording_fetched_manually::create_from_recording($meet, $recording, $context)->trigger();
-                }
-                if($triggerevent && ! $forceupdate) {
-                    \mod_meet\event\recording_fetched_automatically::create_from_recording($meet, $recording, $context)->trigger();
+                if($triggerevent) {
+                    \mod_meet\event\recording_fetched::create_from_recording($meet, $recording, $forceupdate, $context)->trigger();
                 }
             }
         }
@@ -1235,9 +1295,9 @@ function meet_check_hooks_channel_expiration() {
     $config = get_config('meet');
 
     // Check if is expired
-    if(!isset($config->channelid) || $config->channelexpiration <= time()){
+    if(!isset($config->channelid) || $config->channelexpiration / 1000 <= time()){
         global $CFG;
-        
+
         // Get the client and service
         $gclient = meet_create_google_client($config);
         $gcalendarservice = meet_create_google_calendar_service($gclient);
@@ -1252,4 +1312,26 @@ function meet_check_hooks_channel_expiration() {
         set_config('channelid', $gchannel->getId(), 'meet');
         set_config('channelexpiration', $gchannel->getExpiration(), 'meet');
     }
+}
+
+/**
+ * Get the audit records for the given meeting code.
+ *
+ * @param                             $meetingcode
+ * @param Google_Service_Reports|null $service
+ * @return Google_Service_Reports_Activities
+ */
+function meet_get_google_reports_meet($meetingcode, Google_Service_Reports $service = null) {
+    if( ! $service) {
+        $service = meet_create_google_reports_service();
+    }
+
+    // Set optional parameters for the service
+    $optparams = array(
+        'maxResults' => 1000,
+        'eventName'  => 'call_ended',
+        'filters'    => 'meeting_code==' . $meetingcode,
+    );
+
+    return $service->activities->listActivities('all', 'meet', $optparams);
 }

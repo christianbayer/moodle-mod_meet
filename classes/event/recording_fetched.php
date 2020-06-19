@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * The mod_meet recording automatically fetched event
+ * The mod_meet recording fetched event
  *
  * @package   mod_meet
  * @copyright 2020 onwards, Univates
@@ -28,19 +28,22 @@ namespace mod_meet\event;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * The mod_meet recording automatically fetched event class
+ * The mod_meet recording fetched event class
  *
  * @package   mod_meet
  * @copyright 2020 onwards, Univates
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @author    Christian Bayer  (christian.bayer@universo.univates.br)
  */
-class recording_fetched_automatically extends \core\event\base {
+class recording_fetched extends \core\event\base {
 
-    public static function create_from_recording(\stdClass $meet, \stdClass $recording, \context_module $context) {
+    public static function create_from_recording(\stdClass $meet, \stdClass $recording, $forced, \context_module $context) {
         $data = array(
             'context'  => $context,
             'objectid' => $recording->id,
+            'other' => array(
+                'mode' => $forced ? 'manually' : 'automatically',
+            ),
         );
         $event = self::create($data);
         $event->add_record_snapshot('meet', $meet);
@@ -50,17 +53,17 @@ class recording_fetched_automatically extends \core\event\base {
     }
 
     public function get_description() {
-        return "The user with id '$this->userid' automatically fetched the recording with id '$this->objectid' " .
+        return "The user with id '$this->userid' " . $this->other['mode'] . " fetched the recording with id '$this->objectid' " .
             "for the 'meet' activity with course module id '$this->contextinstanceid'.";
     }
 
     protected function get_legacy_logdata() {
-        return array($this->courseid, 'meet', 'automatically fetch recording', 'view.php?id=' . $this->contextinstanceid .
+        return array($this->courseid, 'meet', 'fetch recording', 'view.php?id=' . $this->contextinstanceid .
             '&recordingid=' . $this->objectid, $this->objectid, $this->contextinstanceid);
     }
 
     public static function get_name() {
-        return get_string('event_recording_automatically_fetched', 'meet');
+        return get_string('event_recording_fetched', 'meet');
     }
 
     public function get_url() {

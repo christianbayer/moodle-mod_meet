@@ -44,7 +44,7 @@ $context = context_module::instance($cm->id);
 require_capability('mod/meet:managerecordings', $context);
 
 // Set page url
-$PAGE->set_url('/mod/book/edit.php', array('id' => $recordingid, 'cmid' => $cm->id));
+$PAGE->set_url('/mod/meet/edit.php', array('id' => $recordingid, 'cmid' => $cm->id));
 
 // Create the form
 $mform = new meet_recording_edit_form(null, array('recording' => $recording));

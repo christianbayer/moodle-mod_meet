@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Meet plugin version information
+ * Form class for Meet Attendance Report.
  *
  * @package   mod_meet
  * @copyright 2020 onwards, Univates
@@ -25,9 +25,20 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2020061900;
-$plugin->requires  = 2018050800;
-$plugin->component = 'mod_meet';
-$plugin->cron      = 0;
-$plugin->release   = '0.4.0';
+require_once($CFG->dirroot . '/mod/meet/report/form.php');
 
+/**
+ * Form class for Meet Attendance Report.
+ *
+ * @package   mod_meet
+ * @copyright 2020 onwards, Univates
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @author    Christian Bayer  (christian.bayer@universo.univates.br)
+ */
+class mod_meet_attendance_report_form extends mod_meet_report_form {
+
+    protected function other_report_includes_fields(MoodleQuickForm $mform) { }
+
+    protected function other_display_fields(MoodleQuickForm $mform) { }
+
+}

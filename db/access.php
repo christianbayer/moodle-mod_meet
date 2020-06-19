@@ -86,4 +86,16 @@ $capabilities = array(
         ),
     ),
 
+    // Ability to view reports.
+    'mod/meet:viewreports' => array(
+        'riskbitmask' => RISK_PERSONAL,
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        )
+    ),
+
 );

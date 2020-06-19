@@ -24,13 +24,10 @@
  */
 
 require_once('../../config.php');
-require_once($CFG->dirroot . '/mod/meet/view_lib.php');
 
 // Get parameters
-$id = required_param('id', PARAM_INT);
-$recordingid = optional_param('recordingid', 0, PARAM_INT);
-$forceupdate = optional_param('forceupdate', 0, PARAM_BOOL);
-$join = optional_param('join', 0, PARAM_BOOL);
+$id   = required_param('id', PARAM_INT);
+$mode = optional_param('mode', 'overview', PARAM_TEXT);
 
 // Get course module
 $cm = get_coursemodule_from_id('meet', $id, 0, false, MUST_EXIST);
@@ -41,37 +38,31 @@ $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST)
 // Security check
 require_course_login($course, true, $cm);
 $context = context_module::instance($cm->id);
+require_capability('mod/meet:viewreports', $context);
 
-if($join) {
-
-    require_capability('mod/meet:join', $context);
-
-    // Get meet record
-    $meet = $DB->get_record('meet', array('id' => $cm->instance), '*', MUST_EXIST);
-
-    // Redirect to meeting room
-    if(meet_is_meeting_room_available($meet)) {
-
-        // Trigger view event
-        meet_view($meet, null, true, $course, $cm, $context);
-
-        redirect($meet->gmeeturi);
-    }
-
+// Get config and check if the reports are enabled
+$config = get_config('meet');
+if(!$config->enablereports) {
+    print_error('reports_disabled', 'meet');
 }
 
-if($recordingid) {
-
-    require_capability('mod/meet:playrecordings', $context);
-
-    // Render view page
-    echo meet_render_recording_view_page($course, $cm, $context, $recordingid);
-
-} else {
-
-    require_capability('mod/meet:view', $context);
-
-    // Render view page
-    echo meet_render_view_page($course, $cm, $context, $forceupdate);
-
+// Check if report exists
+if( ! in_array($mode, array('overview', 'attendance'))) {
+    print_error('invalid_report', 'meet');
 }
+
+// Include the given report and display it
+$file = $CFG->dirroot . '/mod/meet/report/' . $mode . '/' . $mode . '_report.php';
+if(is_readable($file)) {
+    include_once($file);
+}
+
+// Get report class name
+$classname = 'mod_meet_' . $mode . '_report';
+if( ! class_exists($classname)) {
+    print_error('invalid_report', 'meet');
+}
+
+// Display the report
+$report = new $classname($mode, $course, $cm);
+$report->display();

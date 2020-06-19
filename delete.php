@@ -54,7 +54,7 @@ if($confirm) {
     // Remove file sharing
     $config = get_config('meet');
     $gclient = meet_create_google_client($config);
-    $gdriveservice = meet_create_google_calendar_drive($gclient);
+    $gdriveservice = meet_create_google_drive_service($gclient);
     meet_remove_google_drive_file_permissions($gdriveservice, $recording->gfileid);
 
     // "Delete" the recording
