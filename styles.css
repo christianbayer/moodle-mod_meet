@@ -2,6 +2,10 @@
     margin-left: 1rem;
 }
 
+.path-mod-meet .meet-table-wrapper {
+    overflow-x: auto;
+}
+
 .path-mod-meet .recording-preview {
     display: flex;
     justify-content: center;

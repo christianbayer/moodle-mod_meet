@@ -378,7 +378,11 @@ function meet_render_recordings_table($recordings, $cm, $context) {
         $table->data[] = $data;
     }
 
-    return html_writer::table($table);
+    $output = '<div class="meet-table-wrapper">';
+    $output .= html_writer::table($table);
+    $output .= '</div>';
+
+    return $output;
 }
 
 function meet_has_capability($capabilityname, $context) {
