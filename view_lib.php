@@ -111,9 +111,9 @@ function meet_render_recording_view_page($course, $cm, $context, $recordingid) {
                 $output .= '<div class="chat-log-message-wrapper">';
                 $output .= '<div class="chat-log-message-author">';
                 $output .= $message['author'];
-                $output .= '</div>';
-                $output .= '<div class="chat-log-message-time">';
+                $output .= '<span class="chat-log-message-time">';
                 $output .= $message['time'];
+                $output .= '</span>';
                 $output .= '</div>';
                 $output .= '<div class="chat-log-message">';
                 $output .= $message['message'];
