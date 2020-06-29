@@ -113,6 +113,7 @@ $string['meeting_room_see_recordings'] = 'You can see the recordings below (not 
 $string['meeting_room_forbidden'] = 'You cannot join to this meeting room.';
 $string['copy_link'] = 'Copy link';
 $string['link_copied'] = 'Link copied';
+$string['chat_log'] = 'Chat Log';
 
 // Capabilities
 $string['meet:addinstance'] = 'Add a new Meet activity';

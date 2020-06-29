@@ -35,10 +35,14 @@ function meet_render_recording_view_page($course, $cm, $context, $recordingid) {
     $meet = $DB->get_record('meet', array('id' => $cm->instance), '*', MUST_EXIST);
 
     // Get the recording
-    $recording = $DB->get_record('meet_recordings', array('id' => $recordingid, 'meetid' => $meet->id, 'deleted' => 0));
+    $recording = $DB->get_record('meet_recordings', array(
+        'id'      => $recordingid,
+        'meetid'  => $meet->id,
+        'deleted' => 0,
+    ));
 
     // Recording not found or hidden
-    if (!$recording || (!meet_has_capability('managerecordings', $context) && ($recording->hidden || $recording->gfileduration == 0))) {
+    if( ! $recording || ( ! meet_has_capability('managerecordings', $context) && ($recording->hidden || $recording->gfileduration == 0))) {
         throw new moodle_exception('error_recording_not_found', 'meet');
     }
 
@@ -46,7 +50,10 @@ function meet_render_recording_view_page($course, $cm, $context, $recordingid) {
     meet_view($meet, $recording, false, $course, $cm, $context);
 
     // Set page properties
-    $PAGE->set_url('/mod/meet/view.php', array('id' => $cm->id, 'recordingid' => $recording->id));
+    $PAGE->set_url('/mod/meet/view.php', array(
+        'id'          => $cm->id,
+        'recordingid' => $recording->id,
+    ));
     $PAGE->set_title($recording->name);
     $PAGE->set_cacheable(false);
     $PAGE->set_heading($course->fullname);
@@ -62,8 +69,62 @@ function meet_render_recording_view_page($course, $cm, $context, $recordingid) {
     $output .= $OUTPUT->heading($recording->name, 2);
 
     // Iframe
+    $output .= '<div class="recording-preview">';
+    $output .= '<div class="iframe-wrapper">';
     $output .= '<div class="iframe-container">';
     $output .= '<iframe src="https://drive.google.com/file/d/' . $recording->gfileid . '/preview" frameborder="0" allowfullscreen></iframe>';
+    $output .= '</div>';
+    $output .= '</div>';
+
+    if($recording->gchatlogid) {
+
+        // Get the file
+        $fs = get_file_storage();
+        $file = $fs->get_file($context->id, 'meet', MEET_CHAT_LOG_FILE_AREA, $recording->id, '/', $recording->gchatlogname);
+
+        // Ensure file is loaded
+        if($file) {
+            // Get the messages
+            $content = $file->get_content();
+            $rawmessages = preg_split('/\n\n(?=\d\d:)/', $content, -1, PREG_SPLIT_NO_EMPTY);
+            $messages = array();
+            foreach ($rawmessages as $rawmessage) {
+                $starttime = strstr($rawmessage, ',', true);
+                preg_match('/\n/', $rawmessage, $matches, PREG_OFFSET_CAPTURE);
+                $content = substr($rawmessage, $matches[0][1]);
+                $separator = strpos($content, ':');
+                $author = substr($content, 0, $separator);
+                $message = substr($content, $separator + 2);
+                $messages[] = array(
+                    'author'  => trim($author),
+                    'message' => trim($message),
+                    'time'    => date('H:i:s', strtotime($starttime)),
+                );
+            }
+
+            // HTML
+            $output .= '<div class="chat-log-wrapper">';
+            $output .= '<h4 class="chat-log-title">' . get_string('chat_log', 'meet') . '</h4>';
+            $output .= '<div class="chat-log-container">';
+            $output .= '<div class="chat-log-list">';
+            foreach ($messages as $message) {
+                $output .= '<div class="chat-log-message-wrapper">';
+                $output .= '<div class="chat-log-message-author">';
+                $output .= $message['author'];
+                $output .= '</div>';
+                $output .= '<div class="chat-log-message-time">';
+                $output .= $message['time'];
+                $output .= '</div>';
+                $output .= '<div class="chat-log-message">';
+                $output .= $message['message'];
+                $output .= '</div>';
+                $output .= '</div>';
+            }
+            $output .= '</div>';
+            $output .= '</div>';
+            $output .= '</div>';
+        }
+    }
     $output .= '</div>';
 
     // Page footer
@@ -106,19 +167,22 @@ function meet_render_view_page($course, $cm, $context, $forceupdate) {
     $output .= meet_render_spacer();
 
     // Recordings section
-    if(meet_has_capability('playrecordings', $context)){
+    if(meet_has_capability('playrecordings', $context)) {
         $output .= $OUTPUT->heading(get_string('recordings', 'meet'), 3);
-        if(count($recordings)){
+        if(count($recordings)) {
             $output .= meet_render_recordings_table($recordings, $cm, $context);
         } else {
             $output .= '<p>' . get_string('no_recordings', 'meet') . '</p>';
         }
     }
 
-    if(meet_has_capability('managerecordings', $context)){
+    if(meet_has_capability('managerecordings', $context)) {
         $output .= meet_render_spacer();
         $output .= '<p>' . get_string('update_recordings_help', 'meet') . '</p>';
-        $output .= '<a href="' . (new moodle_url('/mod/meet/view.php', array('id' => $cm->id, 'forceupdate' => 1)))->out() . '" class="btn btn-primary">' . get_string('update_recordings', 'meet') . '</a>';
+        $output .= '<a href="' . (new moodle_url('/mod/meet/view.php', array(
+                'id'          => $cm->id,
+                'forceupdate' => 1,
+            )))->out() . '" class="btn btn-primary">' . get_string('update_recordings', 'meet') . '</a>';
         $output .= meet_render_spacer();
     }
 
@@ -167,13 +231,16 @@ function meet_render_recordings_table($recordings, $cm, $context) {
     global $OUTPUT, $USER;
 
     $link = function ($id) use ($cm) {
-        return '<a href="' . (new moodle_url('/mod/meet/view.php', array('id' => $cm->id, 'recordingid' => $id)))->out() . '" class="btn btn-sm btn-default">' . get_string('play', 'meet') . '</a>';
+        return '<a href="' . (new moodle_url('/mod/meet/view.php',
+                array('id' => $cm->id, 'recordingid' => $id)))->out() . '" 
+                class="btn btn-sm btn-default">' . get_string('play', 'meet') . '</a>';
     };
 
     $thumbnail = function ($id, $thumb) use ($cm) {
         $o = get_string('unavailable', 'meet');
         if($thumb) {
-            $o = '<a href="' . (new moodle_url('/mod/meet/view.php', array('id' => $cm->id, 'recordingid' => $id)))->out() . '">';
+            $o = '<a href="' . (new moodle_url('/mod/meet/view.php',
+                    array('id' => $cm->id, 'recordingid' => $id)))->out() . '">';
             $o .= '<img src="' . $thumb . '"/>';
             $o .= '</a>';
         }
@@ -188,7 +255,7 @@ function meet_render_recordings_table($recordings, $cm, $context) {
         return $dateTime->format('d/m/y H:i:s');
     };
 
-    $duration = function ($millis) use  ($OUTPUT) {
+    $duration = function ($millis) use ($OUTPUT) {
         $t = round($millis / 1000);
         $time = sprintf('%02d:%02d:%02d', ($t / 3600), ($t / 60 % 60), $t % 60);
 
@@ -210,7 +277,7 @@ function meet_render_recordings_table($recordings, $cm, $context) {
         return $time;
     };
 
-    $actions = function ($id, $title, $hidden, $fileid) use ($OUTPUT, $USER, $context, $cm){
+    $actions = function ($id, $title, $hidden, $fileid) use ($OUTPUT, $USER, $context, $cm) {
 
         // Get the formated title
         $titleunescaped = trim(format_string($title, true, array(
@@ -223,10 +290,7 @@ function meet_render_recordings_table($recordings, $cm, $context) {
 
         // Edit
         $o .= html_writer::link(
-            new moodle_url('edit.php', array(
-                'id'          => $id,
-                'cmid' => $cm->id,
-            )),
+            new moodle_url('edit.php', array('id' => $id, 'cmid' => $cm->id)),
             $OUTPUT->pix_icon('t/edit', get_string('edit_recording', 'meet', $title)),
             array('title' => get_string('edit_recording', 'meet', $titleunescaped))
         );
@@ -258,7 +322,8 @@ function meet_render_recordings_table($recordings, $cm, $context) {
         $o .= html_writer::link(
             'https://drive.google.com/file/d/' . $fileid . '/view',
             $OUTPUT->pix_icon('link', get_string('open_in_drive', 'meet'), 'mod_meet'),
-            array('target' => '_blank', 'title'  => get_string('open_in_drive', 'meet'))
+            array('target' => '_blank', 'title' => get_string('open_in_drive', 'meet'),
+            )
         );
 
         // Delete
@@ -289,14 +354,14 @@ function meet_render_recordings_table($recordings, $cm, $context) {
         get_string('date', 'meet'),
         get_string('duration', 'meet'),
     );
-    if(meet_has_capability('managerecordings', $context)){
+    if(meet_has_capability('managerecordings', $context)) {
         $table->head[] = get_string('actions', 'meet');
     }
 
     // Set data
     foreach ($recordings as $recording) {
-        if(!meet_has_capability('managerecordings', $context)
-            && ($recording->hidden || $recording->gfileduration == 0)){
+        if( ! meet_has_capability('managerecordings', $context)
+            && ($recording->hidden || $recording->gfileduration == 0)) {
             continue;
         }
         $data = array(
@@ -307,7 +372,7 @@ function meet_render_recordings_table($recordings, $cm, $context) {
             $time($recording->gfiletimecreated),
             $duration($recording->gfileduration),
         );
-        if(meet_has_capability('managerecordings', $context)){
+        if(meet_has_capability('managerecordings', $context)) {
             $data[] = $actions($recording->id, $recording->name, $recording->hidden, $recording->gfileid);
         }
         $table->data[] = $data;

@@ -29,6 +29,7 @@ require_once($CFG->libdir . '/enrollib.php');
 defined('MOODLE_INTERNAL') || die;
 
 const MEET_EVENT_TYPE_MEETING_START = 'meeting_start';
+const MEET_CHAT_LOG_FILE_AREA = 'chatlog';
 
 /**
  * Supported features
@@ -37,17 +38,25 @@ const MEET_EVENT_TYPE_MEETING_START = 'meeting_start';
  * @return mixed True if module supports feature, false if not, null if doesn't know
  */
 function meet_supports($feature) {
-    switch($feature) {
-        case FEATURE_GROUPS:                  return true;
-        case FEATURE_GROUPINGS:               return true;
-        case FEATURE_MOD_INTRO:               return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
-        case FEATURE_GRADE_HAS_GRADE:         return false;
-        case FEATURE_GRADE_OUTCOMES:          return false;
-        case FEATURE_BACKUP_MOODLE2:          return true;
-        case FEATURE_SHOW_DESCRIPTION:        return true;
-
-        default: return null;
+    switch ($feature) {
+        case FEATURE_GROUPS:
+            return true;
+        case FEATURE_GROUPINGS:
+            return true;
+        case FEATURE_MOD_INTRO:
+            return true;
+        case FEATURE_COMPLETION_TRACKS_VIEWS:
+            return true;
+        case FEATURE_GRADE_HAS_GRADE:
+            return false;
+        case FEATURE_GRADE_OUTCOMES:
+            return false;
+        case FEATURE_BACKUP_MOODLE2:
+            return true;
+        case FEATURE_SHOW_DESCRIPTION:
+            return true;
+        default:
+            return null;
     }
 }
 
@@ -56,7 +65,7 @@ function meet_supports($feature) {
  */
 function mod_meet_get_fontawesome_icon_map() {
     return array(
-        'mod_meet:link' => 'fa-external-link',
+        'mod_meet:link'  => 'fa-external-link',
         'mod_meet:error' => 'fa-exclamation-circle text-danger',
     );
 }
@@ -157,11 +166,11 @@ function meet_delete_instance($id) {
  * This function extends the settings navigation block for the site.
  *
  * @param settings_navigation $settingsnav The settings navigation object
- * @param navigation_node $meetnode The node to add module settings to
+ * @param navigation_node     $meetnode    The node to add module settings to
  * @return void
  */
 function meet_extend_settings_navigation($settingsnav, $meetnode) {
-    global $PAGE, $CFG;
+    global $PAGE;
 
     // We want to add these new nodes after the Edit settings node, and before the
     // Locally assigned roles node. Of course, both of those are controlled by capabilities.
@@ -198,10 +207,9 @@ function meet_extend_settings_navigation($settingsnav, $meetnode) {
  * @param null $current
  */
 function meet_process_pre_save(&$data, &$current = null) {
-
     // Check channel availability
     meet_check_hooks_channel_expiration();
-    
+
     // When creating a new record
     if( ! $current) {
         $data->timecreated = time();
@@ -224,7 +232,6 @@ function meet_process_pre_save(&$data, &$current = null) {
  * @param null $current Current meet instance, when editing
  */
 function meet_process_post_save(&$data, &$current = null) {
-
     // Set course context
     $data->context = context_course::instance($data->course);
 
@@ -511,7 +518,22 @@ function meet_get_google_calendar_event(Google_Service_Calendar $service, $calen
  */
 function meet_get_google_drive_file(Google_Service_Drive $service, $fileid) {
     $optparams = array(
-        'fields' => 'id,name,videoMediaMetadata/durationMillis,thumbnailLink,createdTime,modifiedTime'
+        'fields' => 'id,name,videoMediaMetadata/durationMillis,thumbnailLink,createdTime,modifiedTime',
+    );
+
+    return $service->files->get($fileid, $optparams);
+}
+
+/**
+ * Streams a Google Drive File
+ *
+ * @param $data
+ * @param $eventid
+ * @return Google_Service_Drive_DriveFile
+ */
+function meet_stream_google_drive_file(Google_Service_Drive $service, $fileid) {
+    $optparams = array(
+        'alt' => 'media',
     );
 
     return $service->files->get($fileid, $optparams);
@@ -718,7 +740,7 @@ function meet_create_google_calendar_event_reminders($savedreminders) {
  * @return Google_Client
  */
 function meet_create_google_client($config = null) {
-    if(!$config) {
+    if( ! $config) {
         $config = get_config('meet');
     }
     $gclient = new Google_Client();
@@ -748,6 +770,7 @@ function meet_create_google_calendar_service($gclient = null) {
     if( ! $gclient) {
         $gclient = meet_create_google_client();
     }
+
     return new Google_Service_Calendar($gclient);
 }
 
@@ -761,6 +784,7 @@ function meet_create_google_drive_service($gclient = null) {
     if( ! $gclient) {
         $gclient = meet_create_google_client();
     }
+
     return new Google_Service_Drive($gclient);
 }
 
@@ -774,6 +798,7 @@ function meet_create_google_reports_service($gclient = null) {
     if( ! $gclient) {
         $gclient = meet_create_google_client();
     }
+
     return new Google_Service_Reports($gclient);
 }
 
@@ -976,12 +1001,13 @@ function meet_view($meet, $recording, $join, $course, $cm, $context) {
         return;
     }
 
-    if($recording){
+    if($recording) {
         \mod_meet\event\recording_played::create_from_recording($meet, $recording, $context)->trigger();
 
         // Completion
         $completion = new completion_info($course);
         $completion->set_module_viewed($cm);
+
         return;
     }
 
@@ -997,55 +1023,58 @@ function meet_view($meet, $recording, $join, $course, $cm, $context) {
  * This function is also used when the users edit the course module name
  * by the inplace edit, to update the calendar name.
  *
- * @global object
- * @param int $courseid
+ * @param int          $courseid
  * @param int|stdClass $instance Meet module instance or ID.
- * @param int|stdClass $cm Course module object or ID.
+ * @param int|stdClass $cm       Course module object or ID.
  * @return bool
+ * @global object
  */
 function meet_refresh_events($courseid = 0, $instance = null, $cm = null) {
     global $DB;
 
     // If we have instance information then we can just update the one event instead of updating all events.
-    if (isset($instance)) {
-        if (!is_object($instance)) {
+    if(isset($instance)) {
+        if( ! is_object($instance)) {
             $instance = $DB->get_record('meet', array('id' => $instance), '*', MUST_EXIST);
         }
-        if (isset($cm)) {
-            if (!is_object($cm)) {
+        if(isset($cm)) {
+            if( ! is_object($cm)) {
                 meet_prepare_update_events($instance);
+
                 return true;
             } else {
                 meet_prepare_update_events($instance, $cm);
+
                 return true;
             }
         }
     }
 
-    if ($courseid) {
-        if (! $meets = $DB->get_records("meet", array("course" => $courseid))) {
+    if($courseid) {
+        if( ! $meets = $DB->get_records("meet", array("course" => $courseid))) {
             return true;
         }
     } else {
-        if (! $meets = $DB->get_records("meet")) {
+        if( ! $meets = $DB->get_records("meet")) {
             return true;
         }
     }
     foreach ($meets as $meet) {
         meet_prepare_update_events($meet);
     }
+
     return true;
 }
 
 /**
  * Updates both the normal and completion calendar events for meet
  *
- * @param  stdClass $meet The meet object (from the DB)
- * @param  stdClass $cm The course module object.
+ * @param stdClass $meet The meet object (from the DB)
+ * @param stdClass $cm   The course module object.
  */
 function meet_prepare_update_events($meet, $cm = null) {
     global $CFG, $DB;
-    require_once($CFG->dirroot.'/calendar/lib.php');
+    require_once($CFG->dirroot . '/calendar/lib.php');
 
     if( ! isset($cm)) {
         $cm = get_coursemodule_from_instance('meet', $meet->id, $meet->course);
@@ -1064,7 +1093,8 @@ function meet_prepare_update_events($meet, $cm = null) {
     $event->modulename   = 'meet';
     $event->instance     = $meet->id;
     $event->visible      = $cm ? $cm->visible : $meet->visible;
-    if ($event->id = $DB->get_field('event', 'id', array('modulename' => 'meet', 'instance' => $meet->id, 'eventtype' => MEET_EVENT_TYPE_MEETING_START))) {
+    if($event->id = $DB->get_field('event', 'id', array('modulename' => 'meet',
+        'instance' => $meet->id, 'eventtype' => MEET_EVENT_TYPE_MEETING_START))) {
         $calendarevent = calendar_event::load($event->id);
         $calendarevent->update($event, false);
     } else {
@@ -1078,7 +1108,7 @@ function meet_prepare_update_events($meet, $cm = null) {
  * This is used by block_myoverview in order to display the event appropriately. If null is returned then the event
  * is not displayed on the block.
  *
- * @param calendar_event $event
+ * @param calendar_event                $event
  * @param \core_calendar\action_factory $factory
  * @return \core_calendar\local\event\entities\action_interface|null
  */
@@ -1145,7 +1175,7 @@ function meet_is_meeting_room_available($meet) {
     $timeend = $meet->timeend;
 
     // Is closed
-    if($timenow < $timestart){
+    if($timenow < $timestart) {
         return false;
     }
 
@@ -1198,10 +1228,13 @@ function meet_get_recordings($meet, $context, $forceupdate = false) {
         $DB->commit_delegated_transaction($transaction);
     }
 
-    return $DB->get_records('meet_recordings', array('meetid' => $meet->id, 'deleted' => 0), 'gfiletimecreated');
+    return $DB->get_records('meet_recordings', array(
+        'meetid'  => $meet->id,
+        'deleted' => 0,
+    ), 'gfiletimecreated');
 }
 
-function meet_get_recording_thumbnail_from_attachment($file){
+function meet_get_recording_thumbnail_from_attachment($file) {
     return $file->getThumbnailLink() ? ('data:image/jpeg;base64,' . base64_encode(file_get_contents($file->getThumbnailLink()))) : null;
 }
 
@@ -1223,64 +1256,103 @@ function meet_update_recordings($meet, $event, $gdriveservice, $triggerevent = f
         // Run throug the event attachments
         foreach ($event->getAttachments() as $attachment) {
 
-            // Check if is not a video
-            if($attachment->getMimeType() !== 'video/mp4') {
-                continue;
-            }
+            // Check if is a video
+            if($attachment->getMimeType() === 'video/mp4') {
 
-            // Check if the record already exists
-            if(($key = array_search($attachment->getFileId(), array_column($currentrecordings, 'gfileid'))) !== false) {
+                // Check if the record already exists
+                if(($key = array_search($attachment->getFileId(), array_column($currentrecordings, 'gfileid'))) !== false) {
 
-                // Get the recording
-                $recording = $currentrecordings[$key];
+                    // Get the recording
+                    $recording = $currentrecordings[$key];
 
-                // The recording is "deleted", don't update it
-                if($recording->deleted) {
-                    continue;
+                    // The recording is "deleted", don't update it
+                    if($recording->deleted) {
+                        continue;
+                    }
+
+                } else {
+
+                    // Create a new object
+                    $recording = new stdClass();
+                    $recording->courseid    = $meet->course;
+                    $recording->meetid      = $meet->id;
+                    $recording->description = null;
+                    $recording->hidden      = 0;
+                    $recording->timecreated = time();
+
                 }
 
-            } else {
-
-                // Create a new object
-                $recording = new stdClass();
-                $recording->courseid = $meet->course;
-                $recording->meetid = $meet->id;
-                $recording->description = null;
-                $recording->hidden = 0;
-                $recording->timecreated = time();
-
-            }
-
-            // Get the file
-            $file = meet_get_google_drive_file($gdriveservice, $attachment->getFileId());
-
-            // Update recording data
-            $recording->gfileid = $file->getId();
-            $recording->gfilename = $file->getName();
-            $recording->gfileduration = $file->getVideoMediaMetadata() ? $file->getVideoMediaMetadata()->getDurationMillis() : 0;
-            $recording->gfiletimecreated = (new DateTime($file->getCreatedTime()))->getTimestamp();
-            $recording->gfiletimemodified = (new DateTime($file->getModifiedTime()))->getTimestamp();
-            $recording->gfilethumbnail = meet_get_recording_thumbnail_from_attachment($file);
-            $recording->timemodified = time();
-
-            if($key !== false) {
-
-                // This recording already exists in DB, update it
-                $DB->update_record('meet_recordings', $recording);
-
-            } else {
-
-                // Before inserting it to DB, need to change the Drive File permissions
+                // Need to change the Drive File permissions
                 meet_remove_google_drive_file_permissions($gdriveservice, $attachment->getFileId());
                 meet_set_google_drive_file_permission($gdriveservice, $attachment->getFileId());
 
-                // Save
-                $recording->name = $file->getName();
-                $recording->id = $DB->insert_record('meet_recordings', $recording);
+                // Get the file
+                $gfile = meet_get_google_drive_file($gdriveservice, $attachment->getFileId());
 
-                // Trigger event
-                if($triggerevent) {
-                    \mod_meet\event\recording_fetched::create_from_recording($meet, $recording, $forceupdate, $context)->trigger();
+                // Update recording data
+                $recording->gfileid = $gfile->getId();
+                $recording->gfilename = $gfile->getName();
+                $recording->gfileduration = $gfile->getVideoMediaMetadata() ?
+                    $gfile->getVideoMediaMetadata()->getDurationMillis() : 0;
+                $recording->gfiletimecreated = (new DateTime($gfile->getCreatedTime()))->getTimestamp();
+                $recording->gfiletimemodified = (new DateTime($gfile->getModifiedTime()))->getTimestamp();
+                $recording->gfilethumbnail = meet_get_recording_thumbnail_from_attachment($gfile);
+                $recording->timemodified = time();
+
+                if($key !== false) {
+
+                    // This recording already exists in DB, update it
+                    $DB->update_record('meet_recordings', $recording);
+
+                } else {
+
+                    // Save
+                    $recording->name = $gfile->getName();
+                    $recording->id = $DB->insert_record('meet_recordings', $recording);
+
+                    // Trigger event
+                    if($triggerevent) {
+                        \mod_meet\event\recording_fetched::create_from_recording($meet, $recording,
+                            $forceupdate, $context)->trigger();
+                    }
+                }
+            }
+
+            // Check if is a chat log
+            if($attachment->getMimeType() === 'text/plain' && pathinfo($attachment->getTitle())['extension'] === 'sbv') {
+
+                // Get the recording associated to this log
+                $chatrecording = $DB->get_record_sql("SELECT * FROM {meet_recordings} WHERE gfilename LIKE '%" . pathinfo($attachment->getTitle())['filename'] . "%'");
+
+                // If the log is not assigned
+                if( ! $chatrecording->gchatlogid) {
+
+                    // Before inserting it to DB, need to change the Drive File permissions
+                    meet_remove_google_drive_file_permissions($gdriveservice, $attachment->getFileId());
+                    meet_set_google_drive_file_permission($gdriveservice, $attachment->getFileId());
+
+                    // Get the streamed file
+                    $gfile = meet_stream_google_drive_file($gdriveservice, $attachment->getFileId());
+
+                    // Prepare file record object
+                    $fileinfo = array(
+                        'contextid' => $context->id,            // Context
+                        'component' => 'meet',                  // Component
+                        'filearea'  => MEET_CHAT_LOG_FILE_AREA, // Area
+                        'itemid'    => $chatrecording->id,      // Associated record id
+                        'filepath'  => '/',                     // Path
+                        'filename'  => $attachment->getTitle()  // Filename
+                    );
+
+                    // Save the file
+                    $fs = get_file_storage();
+                    $file = $fs->create_file_from_string($fileinfo, $gfile->getBody());
+
+                    // Update the recording
+                    $chatrecording->gchatlogid = $attachment->getFileId();
+                    $chatrecording->gchatlogname = $attachment->getTitle();
+                    $chatrecording->chatlogid = $file->get_id();
+                    $DB->update_record('meet_recordings', $chatrecording);
                 }
             }
         }
@@ -1295,13 +1367,13 @@ function meet_check_hooks_channel_expiration() {
     $config = get_config('meet');
 
     // Check if is expired
-    if(!isset($config->channelid) || $config->channelexpiration / 1000 <= time()){
+    if( ! isset($config->channelid) || $config->channelexpiration / 1000 <= time()) {
         global $CFG;
 
         // Get the client and service
         $gclient = meet_create_google_client($config);
         $gcalendarservice = meet_create_google_calendar_service($gclient);
-        
+
         // Create the channel
         $gchannel = new Google_Service_Calendar_Channel();
         $gchannel->setId(meet_generate_id());

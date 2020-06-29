@@ -99,5 +99,26 @@ function xmldb_meet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2020061900, 'meet');
     }
 
+    if($oldversion < 2020062900) {
+
+        // Define table meet to be updated
+        $table = new xmldb_table('meet_recordings');
+        $fields = array(
+            new xmldb_field('chatlogid', XMLDB_TYPE_INTEGER, '10', true, null, null, null, 'meetid'),
+            new xmldb_field('gchatlogid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'meetid'),
+            new xmldb_field('gchatlogname', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'meetid'),
+        );
+
+        // Add fields
+        foreach ($fields as $field) {
+            if( ! $dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+
+        // Meet savepoint reached.
+        upgrade_mod_savepoint(true, 2020062900, 'meet');
+    }
+
     return true;
 }
