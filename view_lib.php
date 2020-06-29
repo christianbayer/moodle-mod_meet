@@ -150,6 +150,12 @@ function meet_render_availability($meet, $cm, $context) {
         $output .= '<p>' . get_string('meeting_room_closed', 'meet') . ' ' . get_string('meeting_room_see_recordings', 'meet') . '</p>';
     }
 
+    if(meet_has_capability('managerecordings', $context)) {
+        global $PAGE;
+        $PAGE->requires->js_call_amd('mod_meet/clipboard', 'init');
+        $output .= '<button data-link="' . $meet->gmeeturi . '" class="btn btn-success" id="meet-copy-link-to-clipboard">' . get_string('copy_link', 'meet') . '</button>';
+    }
+
     return $output;
 }
 

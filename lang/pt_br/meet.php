@@ -111,6 +111,8 @@ $string['meeting_room_available'] = 'A sala de reuniões está pronta.';
 $string['meeting_room_closed'] = 'A sala de reuniões está fechada.';
 $string['meeting_room_see_recordings'] = 'Você pode visualizar as gravações (nem sempre disponíveis) abaixo.';
 $string['meeting_room_forbidden'] = 'Você não pode ingressar nesta sala de reuniões.';
+$string['copy_link'] = 'Copiar link';
+$string['link_copied'] = 'Link copiado';
 
 // Capabilities
 $string['meet:addinstance'] = 'Adicionar uma nova atividade do Meet';

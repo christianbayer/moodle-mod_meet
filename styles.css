@@ -12,3 +12,7 @@
     height: 100%;
     border: 0;
 }
+
+.path-mod-meet .panel-body #region-main .btn + .btn {
+    margin-left: 1rem;
+}
