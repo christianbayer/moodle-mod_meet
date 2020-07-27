@@ -1217,7 +1217,7 @@ function meet_get_recordings($meet, $context, $forceupdate = false) {
         $gevent = meet_get_google_calendar_event($gcalendarservice, $config->calendarid, $meet->geventid);
 
         // Update recordings
-        meet_update_recordings($meet, $gevent, $gdriveservice, true, $context, $forceupdate);
+        meet_update_recordings($meet, $gevent, $gdriveservice, $context, true, $forceupdate);
 
         // Update meet
         $meet->recordingslastcheck = time();
@@ -1244,7 +1244,7 @@ function meet_get_recording_thumbnail_from_attachment($file) {
  * @param $meet
  * @param $event
  */
-function meet_update_recordings($meet, $event, $gdriveservice, $triggerevent = false, $context = null, $forceupdate = null) {
+function meet_update_recordings($meet, $event, $gdriveservice, $context, $triggerevent = false, $forceupdate = null) {
     global $DB;
 
     // The event has attachments

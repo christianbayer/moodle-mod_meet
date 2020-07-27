@@ -66,9 +66,13 @@ if($headers['X-Goog-Channel-ID'] === $config->channelid){
         // Check if this event exists in DB
         if($meet = $DB->get_record('meet', array('geventid' => $event->getId()))) {
 
+            // Get course module and context
+            $cm = get_coursemodule_from_instance('meet', $meet->id, 0, false, MUST_EXIST);
+            $context = context_module::instance($cm->id);
+
             // Update only participants responses and recordings
             meet_watcher_update_participants_responses($meet, $event);
-            meet_update_recordings($meet, $event, $gdriveservice);
+            meet_update_recordings($meet, $event, $gdriveservice, $context);
 
         }
     }
