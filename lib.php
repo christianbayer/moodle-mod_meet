@@ -924,14 +924,15 @@ function meet_add_user_to_event($meetorid, $userorid) {
     $participant->timemodified = time();
     $DB->insert_record('meet_participants', $participant);
 
-    // Set as attendee
-    $attendees = $gevent->getAttendees();
-    $attendee = new Google_Service_Calendar_EventAttendee();
-    $attendee->setEmail($userorid->email);
-    $attendee->setResponseStatus($participant->status);
-    $attendee->setComment($participant->comment);
-    $attendees[] = $attendee;
-    $gevent->setAttendees($attendees);
+    // Set participants info into data object
+    $data = new stdClass();
+    $data->context = context_course::instance($meetorid->course);
+    $data->users = get_enrolled_users($data->context);
+    $data->participants = array_values($DB->get_records('meet_participants', array('meetid' => $meetorid->id)));
+
+    // Get and set the new participants
+    $gattendees = meet_create_google_calendar_event_attendees($data);
+    $gevent->setAttendees($gattendees);
 
     // Update the event
     meet_update_google_calendar_event($gservice, $config->calendarid, $gevent, $meetorid->notify);
@@ -967,13 +968,15 @@ function meet_remove_user_from_event($meetorid, $userorid) {
         'userid' => $userorid->id,
     ));
 
-    // Remove as attendee
-    $attendees = $gevent->getAttendees();
-    $attendeekey = array_search($userorid->email, array_column($attendees, 'email'));
-    if($attendeekey !== false) {
-        unset($attendees[$attendeekey]);
-    }
-    $gevent->setAttendees($attendees);
+    // Set participants info into data object
+    $data = new stdClass();
+    $data->context = context_course::instance($meetorid->course);
+    $data->users = get_enrolled_users($data->context);
+    $data->participants = array_values($DB->get_records('meet_participants', array('meetid' => $meetorid->id)));
+
+    // Get and set the new participants
+    $gattendees = meet_create_google_calendar_event_attendees($data);
+    $gevent->setAttendees($gattendees);
 
     // Update the event
     meet_update_google_calendar_event($gservice, $config->calendarid, $gevent, $meetorid->notify);
