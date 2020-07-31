@@ -101,7 +101,7 @@ function xmldb_meet_upgrade($oldversion) {
 
     if($oldversion < 2020062900) {
 
-        // Define table meet to be updated
+        // Define table meet recordings to be updated
         $table = new xmldb_table('meet_recordings');
         $fields = array(
             new xmldb_field('chatlogid', XMLDB_TYPE_INTEGER, '10', true, null, null, null, 'meetid'),
@@ -118,6 +118,21 @@ function xmldb_meet_upgrade($oldversion) {
 
         // Meet savepoint reached.
         upgrade_mod_savepoint(true, 2020062900, 'meet');
+    }
+
+    if($oldversion < 2020073101) {
+
+        // Define table meet to be updated
+        $table = new xmldb_table('meet');
+        $field = new xmldb_field('addcoursename', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'notify');
+
+        // Add field
+        if( ! $dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Meet savepoint reached.
+        upgrade_mod_savepoint(true, 2020073101, 'meet');
     }
 
     return true;

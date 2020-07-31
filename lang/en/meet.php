@@ -61,6 +61,8 @@ $string['form_field_timeend'] = 'Ends at';
 $string['form_field_timeend_help'] = 'End date and time of the conference';
 $string['form_field_notify'] = 'Notify participants';
 $string['form_field_notify_help'] = 'If checked, all participants will be notified of changes to this event by email';
+$string['form_field_addcoursename'] = 'Add course name in Calendar event';
+$string['form_field_addcoursename_help'] = 'If checked, the course name will be added in the title of the event in Google Calendar';
 $string['form_field_description'] = 'Description';
 $string['form_field_visible'] = 'Visible';
 

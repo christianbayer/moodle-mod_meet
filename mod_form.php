@@ -79,6 +79,11 @@ class mod_meet_mod_form extends moodleform_mod {
         $mform->addElement('checkbox', 'notify', get_string('form_field_notify', 'meet'));
         $mform->addHelpButton('notify', 'form_field_notify', 'meet');
         $mform->setDefault('notify', 1);
+
+        // Add course name field
+        $mform->addElement('checkbox', 'addcoursename', get_string('form_field_addcoursename', 'meet'));
+        $mform->addHelpButton('addcoursename', 'form_field_addcoursename', 'meet');
+        $mform->setDefault('addcoursename', 1);
     }
 
     private function add_block_reminders(&$mform, &$reminders) {

@@ -618,8 +618,14 @@ function meet_create_or_update_google_calendar_event($data) {
         $data->gevent->setConferenceData(meet_create_google_calendar_event_conference_data(meet_generate_id()));
     }
 
+    $summary = $data->name;
+    if($data->addcoursename) {
+        $course = get_course($data->course);
+        $summary = $course->shortname . ' - ' . $summary;
+    }
+
     // Set basic
-    $data->gevent->setSummary($data->name);
+    $data->gevent->setSummary($summary);
     $data->gevent->setDescription($data->intro);
     $data->gevent->setStart($gdatetimestart);
     $data->gevent->setEnd($gdatetimeend);
@@ -883,7 +889,12 @@ function meet_update_google_calendar_event_name($meetid) {
     $gevent = meet_get_google_calendar_event($gservice, $config->calendarid, $meet->geventid);
 
     // Set summary
-    $gevent->setSummary($meet->name);
+    $summary = $data->name;
+    if($meet->addcoursename) {
+        $course = get_course($meet->course);
+        $summary = $course->shortname . ' - ' . $summary;
+    }
+    $gevent->setSummary($summary);
 
     // Update the event
     meet_update_google_calendar_event($gservice, $config->calendarid, $gevent, $meet->notify);

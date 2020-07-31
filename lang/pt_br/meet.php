@@ -61,6 +61,8 @@ $string['form_field_timeend'] = 'Termina em';
 $string['form_field_timeend_help'] = 'Data e hora de término da conferência';
 $string['form_field_notify'] = 'Notificar participantes';
 $string['form_field_notify_help'] = 'Se marcado, todos os participantes serão notificados das alterações deste evento por e-mail';
+$string['form_field_addcoursename'] = 'Adicionar nome do curso na Agenda';
+$string['form_field_addcoursename_help'] = 'Se marcado, o nome do curso será adicionado ao título do evento no Google Agenda';
 $string['form_field_description'] = 'Descrição';
 $string['form_field_visible'] = 'Visível';
 
